@@ -6,7 +6,7 @@
     <title>PricePilot Compare</title>
     <meta
       name="description"
-      content="Compare product and service pricing with student, senior, and service member discounts factored in."
+      content="Search product and service price snapshots across multiple retailers, compare coupons and eligibility discounts, and review dated price history."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,25 +20,28 @@
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Discount-aware price comparison</p>
-          <h1>See the price before and after the discounts people usually have to ask for.</h1>
+          <p class="eyebrow">Search-aware price comparison</p>
+          <h1>Search the stores, compare the deal stack, and see the dated price story.</h1>
           <p class="hero-text">
-            Compare products and services side by side, then tell the app whether you are a
-            student, senior, or service member so it can surface the best eligible price.
+            PricePilot now models how a real comparison flow should feel: scan the same item or an
+            equivalent service, compare Amazon, Best Buy, Walmart, Target, and more, then layer in
+            coupons, student pricing, senior discounts, and service member offers.
           </p>
           <div class="hero-actions">
-            <button class="ghost-button" id="jumpToFormBtn" type="button">Add a custom offer</button>
-            <button class="solid-button" id="resetOffersBtn" type="button">Reload sample offers</button>
+            <button class="ghost-button" id="jumpToSearchBtn" type="button">Jump to search</button>
+            <button class="solid-button" id="resetDataBtn" type="button">Reload tracked snapshots</button>
           </div>
         </div>
         <div class="hero-meter">
-          <div class="meter-label">How this works</div>
+          <div class="meter-label">What this build covers</div>
           <ol class="meter-steps">
-            <li>Choose your discount profile.</li>
-            <li>Filter products or services.</li>
-            <li>Compare the final price and savings instantly.</li>
+            <li>Same-item and equivalent-plan comparison datasets.</li>
+            <li>Coupon, eligibility, and requirement-aware final pricing.</li>
+            <li>Dated price history with current-store comparison.</li>
           </ol>
-          <p class="meter-footnote">Only the best eligible discount is applied to each offer.</p>
+          <p class="meter-footnote" id="dataModeNote">
+            Source mode: seeded retailer snapshots ready to be wired to live APIs.
+          </p>
         </div>
       </header>
 
@@ -47,32 +50,39 @@
           <section class="panel">
             <div class="panel-heading">
               <p class="section-kicker">Profile</p>
-              <h2>Who is shopping?</h2>
+              <h2>Discount profile</h2>
             </div>
             <p class="panel-text">
-              Select every discount that applies to you. Offers do not stack, so the app always
-              uses the single best discount for each listing.
+              Select every profile that applies. Membership discounts do not stack with each other,
+              but coupons can stack when a provider allows it.
             </p>
             <div class="profile-list">
               <label class="toggle">
                 <input id="studentToggle" type="checkbox" />
                 <span class="toggle-copy">
                   <strong>Student</strong>
-                  <span>Show student-only pricing when available.</span>
+                  <span>Use student pricing when verification or enrollment is available.</span>
                 </span>
               </label>
               <label class="toggle">
                 <input id="seniorToggle" type="checkbox" />
                 <span class="toggle-copy">
                   <strong>Senior</strong>
-                  <span>Reveal senior discounts and age-based offers.</span>
+                  <span>Apply age-based programs and senior deal pricing where offered.</span>
                 </span>
               </label>
               <label class="toggle">
                 <input id="serviceToggle" type="checkbox" />
                 <span class="toggle-copy">
                   <strong>Service Member</strong>
-                  <span>Use military and service member discounts when offered.</span>
+                  <span>Apply military, veteran, or active-duty pricing where available.</span>
+                </span>
+              </label>
+              <label class="toggle">
+                <input id="couponToggle" type="checkbox" checked />
+                <span class="toggle-copy">
+                  <strong>Apply coupons</strong>
+                  <span>Use the strongest eligible coupon and stack it when store rules allow.</span>
                 </span>
               </label>
             </div>
@@ -81,111 +91,113 @@
           <section class="panel summary-panel">
             <div class="panel-heading">
               <p class="section-kicker">Snapshot</p>
-              <h2>Best current view</h2>
+              <h2>Current view</h2>
             </div>
             <div class="summary-grid">
               <div class="summary-item">
-                <span class="summary-label">Lowest final price</span>
+                <span class="summary-label">Cheapest final price</span>
                 <strong class="summary-value" id="lowestPriceValue">$0.00</strong>
-                <span class="summary-detail" id="lowestPriceDetail">Waiting for offers</span>
+                <span class="summary-detail" id="lowestPriceDetail">Waiting for results</span>
               </div>
               <div class="summary-item">
-                <span class="summary-label">Biggest savings</span>
+                <span class="summary-label">Largest total markdown</span>
                 <strong class="summary-value" id="largestSavingsValue">$0.00</strong>
-                <span class="summary-detail" id="largestSavingsDetail">Waiting for offers</span>
+                <span class="summary-detail" id="largestSavingsDetail">Waiting for results</span>
               </div>
               <div class="summary-item">
-                <span class="summary-label">Average final price</span>
-                <strong class="summary-value" id="averagePriceValue">$0.00</strong>
-                <span class="summary-detail" id="averagePriceDetail">Waiting for offers</span>
+                <span class="summary-label">History window</span>
+                <strong class="summary-value" id="historyWindowValue">0 days</strong>
+                <span class="summary-detail" id="historyWindowDetail">Waiting for results</span>
               </div>
             </div>
           </section>
 
-          <section class="panel" id="offer-form-section">
+          <section class="panel">
             <div class="panel-heading">
-              <p class="section-kicker">Custom input</p>
-              <h2>Add an offer</h2>
+              <p class="section-kicker">Sources</p>
+              <h2>Search targets</h2>
             </div>
-            <form id="offerForm" class="offer-form">
-              <label>
-                Offer name
-                <input id="offerName" name="offerName" type="text" placeholder="Student internet plan" required />
+            <p class="panel-text">
+              These toggles control which seeded store adapters are included in the comparison.
+            </p>
+            <div class="source-list">
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Amazon" checked />
+                <span>Amazon</span>
               </label>
-              <label>
-                Store or provider
-                <input id="providerName" name="providerName" type="text" placeholder="MetroNet" required />
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Best Buy" checked />
+                <span>Best Buy</span>
               </label>
-              <div class="two-up">
-                <label>
-                  Type
-                  <select id="offerType" name="offerType">
-                    <option value="product">Product</option>
-                    <option value="service">Service</option>
-                  </select>
-                </label>
-                <label>
-                  Billing
-                  <select id="billingCycle" name="billingCycle">
-                    <option value="one-time">One-time</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
-                </label>
-              </div>
-              <div class="two-up">
-                <label>
-                  Category
-                  <input id="categoryName" name="categoryName" type="text" placeholder="Internet" required />
-                </label>
-                <label>
-                  Base price
-                  <input
-                    id="basePrice"
-                    name="basePrice"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="49.99"
-                    required
-                  />
-                </label>
-              </div>
-              <div class="discount-inputs">
-                <label>
-                  Student %
-                  <input id="studentDiscount" name="studentDiscount" type="number" min="0" max="100" step="1" placeholder="10" />
-                </label>
-                <label>
-                  Senior %
-                  <input id="seniorDiscount" name="seniorDiscount" type="number" min="0" max="100" step="1" placeholder="15" />
-                </label>
-                <label>
-                  Service member %
-                  <input id="serviceDiscount" name="serviceDiscount" type="number" min="0" max="100" step="1" placeholder="20" />
-                </label>
-              </div>
-              <label>
-                Notes
-                <textarea
-                  id="offerNotes"
-                  name="offerNotes"
-                  rows="3"
-                  placeholder="Anything helpful, like contract length, eligibility details, or bundle perks."
-                ></textarea>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Walmart" checked />
+                <span>Walmart</span>
               </label>
-              <button class="solid-button form-button" type="submit">Save offer</button>
-            </form>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Target" checked />
+                <span>Target</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="AT&T Fiber" checked />
+                <span>AT&amp;T Fiber</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Spectrum" checked />
+                <span>Spectrum</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Verizon 5G Home" checked />
+                <span>Verizon 5G Home</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Xfinity" checked />
+                <span>Xfinity</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Google One" checked />
+                <span>Google One</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Dropbox" checked />
+                <span>Dropbox</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="Microsoft 365" checked />
+                <span>Microsoft 365</span>
+              </label>
+              <label class="source-pill">
+                <input class="provider-toggle" type="checkbox" value="iCloud+" checked />
+                <span>iCloud+</span>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel status-panel">
+            <div class="panel-heading">
+              <p class="section-kicker">Live Data</p>
+              <h2>Integration notes</h2>
+            </div>
+            <ul class="status-list">
+              <li>Current app mode uses local retailer snapshots so GitHub Pages stays safe and fast.</li>
+              <li>Each provider card already supports current price, coupon logic, and dated history.</li>
+              <li id="liveRequirementsText">
+                To go live, connect server-side adapters for retailer APIs and your own history store.
+              </li>
+            </ul>
           </section>
         </aside>
 
         <section class="results-area">
-          <div class="results-toolbar">
-            <label class="search-field">
-              <span class="sr-only">Search offers</span>
-              <input id="searchInput" type="search" placeholder="Search products, providers, or categories" />
+          <div class="results-toolbar" id="searchSection">
+            <label class="search-field search-field-wide">
+              <span class="sr-only">Search tracked items</span>
+              <input
+                id="searchInput"
+                type="search"
+                placeholder="Search the same item or an equivalent service, like AirPods, internet, TV, or cloud storage"
+              />
             </label>
-            <div class="filter-strip" role="group" aria-label="Filter offers">
+            <div class="filter-strip" role="group" aria-label="Filter tracked items">
               <button class="filter-chip active" data-filter="all" type="button" aria-pressed="true">All</button>
               <button class="filter-chip" data-filter="product" type="button" aria-pressed="false">Products</button>
               <button class="filter-chip" data-filter="service" type="button" aria-pressed="false">Services</button>
@@ -193,45 +205,117 @@
             <label class="sort-field">
               <span>Sort by</span>
               <select id="sortSelect">
-                <option value="final-asc">Lowest final price</option>
-                <option value="savings-desc">Largest savings</option>
-                <option value="base-asc">Lowest base price</option>
+                <option value="final-asc">Cheapest final price</option>
+                <option value="markdown-desc">Largest markdown</option>
+                <option value="providers-desc">Most provider matches</option>
                 <option value="name-asc">Name A-Z</option>
               </select>
             </label>
           </div>
 
-          <section class="list-shell" aria-live="polite">
-            <div class="list-head">
-              <span>Offer</span>
-              <span>Price breakdown</span>
-              <span>Savings</span>
+          <section class="catalog-shell" aria-live="polite">
+            <div class="list-head catalog-head">
+              <span>Tracked item</span>
+              <span>Best current deal</span>
+              <span>Coverage</span>
             </div>
-            <div id="offersList" class="offers-list"></div>
+            <div id="catalogList" class="catalog-list"></div>
+          </section>
+
+          <section class="detail-shell">
+            <div class="detail-header">
+              <div>
+                <p class="section-kicker">Inspector</p>
+                <h2 id="selectedTitle">Select a tracked item</h2>
+                <p class="detail-description" id="selectedDescription">
+                  Search above to inspect current comparison results, coupon stacking, deal
+                  requirements, and price history.
+                </p>
+              </div>
+              <div class="detail-badges" id="selectedBadges"></div>
+            </div>
+
+            <section class="history-shell">
+              <div class="history-head">
+                <div>
+                  <p class="section-kicker">Price history</p>
+                  <h3>Dated timeline</h3>
+                </div>
+                <p class="history-note" id="historyNote">
+                  Price history will appear once a tracked item is selected.
+                </p>
+              </div>
+              <div class="history-chart-frame">
+                <svg id="historyChart" viewBox="0 0 920 280" role="img" aria-label="Price history chart"></svg>
+              </div>
+              <div class="history-legend" id="historyLegend"></div>
+            </section>
+
+            <section class="providers-shell">
+              <div class="providers-head">
+                <p class="section-kicker">Current comparison</p>
+                <h3>Store and provider results</h3>
+              </div>
+              <div id="providerGrid" class="provider-grid"></div>
+            </section>
           </section>
         </section>
       </main>
     </div>
 
-    <template id="offerRowTemplate">
-      <article class="offer-row">
-        <div class="offer-main">
+    <template id="catalogCardTemplate">
+      <article class="catalog-card" tabindex="0">
+        <div class="catalog-main">
           <div class="offer-title-line">
-            <h3 class="offer-title"></h3>
-            <span class="offer-type"></span>
+            <h3 class="catalog-title"></h3>
+            <span class="offer-type catalog-type"></span>
           </div>
-          <p class="offer-provider"></p>
-          <div class="offer-meta"></div>
-          <p class="offer-notes"></p>
+          <p class="catalog-subtitle"></p>
+          <div class="catalog-meta"></div>
         </div>
-        <div class="offer-pricing">
-          <span class="price-block price-base"></span>
-          <span class="price-block price-discount"></span>
-          <span class="price-block price-final"></span>
+        <div class="catalog-pricing">
+          <span class="price-block catalog-best"></span>
+          <span class="price-block catalog-regular"></span>
+          <span class="price-block catalog-note"></span>
         </div>
-        <div class="offer-actions">
-          <span class="savings-pill"></span>
-          <button class="remove-button" type="button">Remove</button>
+        <div class="catalog-side">
+          <span class="savings-pill catalog-pill"></span>
+          <span class="catalog-count"></span>
+        </div>
+      </article>
+    </template>
+
+    <template id="providerCardTemplate">
+      <article class="provider-card">
+        <div class="provider-topline">
+          <div>
+            <div class="offer-title-line">
+              <h4 class="provider-name"></h4>
+              <span class="provider-rank"></span>
+            </div>
+            <p class="provider-subtitle"></p>
+          </div>
+          <span class="provider-status"></span>
+        </div>
+        <div class="provider-pricing-grid">
+          <div>
+            <span class="provider-label">Regular</span>
+            <strong class="provider-value provider-regular"></strong>
+          </div>
+          <div>
+            <span class="provider-label">Current</span>
+            <strong class="provider-value provider-current"></strong>
+          </div>
+          <div>
+            <span class="provider-label">Final</span>
+            <strong class="provider-value provider-final"></strong>
+          </div>
+        </div>
+        <div class="provider-breakdown"></div>
+        <div class="provider-meta"></div>
+        <div class="provider-requirements">
+          <p class="requirements-heading">Requirements</p>
+          <ul class="requirements-list"></ul>
         </div>
       </article>
     </template>
@@ -239,4 +323,3 @@
     <script src="script.js"></script>
   </body>
 </html>
-

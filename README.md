@@ -1,6 +1,6 @@
 # PricePilot Compare
 
-PricePilot Compare is a lightweight static web app for comparing products and services while factoring in common eligibility discounts for students, seniors, and service members.
+PricePilot Compare is a static web app for comparing tracked product and service snapshots while factoring in coupons, student pricing, senior deals, and service member discounts.
 
 ## Live Demo
 
@@ -8,12 +8,13 @@ PricePilot Compare is a lightweight static web app for comparing products and se
 
 ## Features
 
-- Compare products and services in one interface
+- Search tracked products and equivalent service plans in one interface
+- Compare retailer and provider snapshots across Amazon, Best Buy, Walmart, Target, and service providers
 - Toggle student, senior, and service member discount profiles
-- Automatically apply the single best eligible discount per offer
-- Search, filter, and sort offers by price or savings
-- Add custom offers locally in the browser
-- Persist custom offers with local storage
+- Apply coupon logic and stack coupons when the provider rules allow it
+- Surface current price, regular price, final eligible price, and requirement notes together
+- Render dated price history for each provider in the selected comparison
+- Filter by products or services and sort by cheapest final price or biggest markdown
 
 ## Preview
 
@@ -46,13 +47,23 @@ Then open `http://localhost:8080`.
 ## How It Works
 
 1. Choose whether the shopper is a student, senior, or service member.
-2. Browse the sample offers or add your own.
-3. Search, filter, and sort the list.
-4. The app calculates the final price by applying the best single eligible discount.
+2. Decide whether coupons should be applied.
+3. Search the tracked catalog for the same item or an equivalent service plan.
+4. Review current price, coupon stacking, eligibility requirements, and dated price history.
 
 ## Notes
 
-- Discounts do not stack
-- Custom offers are stored locally in the browser
-- The included sample data is demo data and can be replaced easily
+- Membership discounts do not stack with each other
+- Coupons only stack when the provider data says they can
+- The included retailer and service data is seeded demo snapshot data
+- Real live store search and history collection should be done through server-side adapters and your own history database
+
+## Live Integration Plan
+
+This GitHub Pages build is intentionally using local snapshot data. For production-grade live search:
+
+- Add a backend or serverless layer so API keys are never exposed in the browser
+- Query official or approved retailer/provider APIs where available
+- Store dated price snapshots in your own database so price history remains available even when the source API only returns current prices
+- Normalize item matching, billing cycles, and deal requirements before sending results back to the frontend
 
