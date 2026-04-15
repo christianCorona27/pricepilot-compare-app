@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PricePilot Compare</title>
+    <meta
+      name="description"
+      content="Compare product and service pricing with student, senior, and service member discounts factored in."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Discount-aware price comparison</p>
+          <h1>See the price before and after the discounts people usually have to ask for.</h1>
+          <p class="hero-text">
+            Compare products and services side by side, then tell the app whether you are a
+            student, senior, or service member so it can surface the best eligible price.
+          </p>
+          <div class="hero-actions">
+            <button class="ghost-button" id="jumpToFormBtn" type="button">Add a custom offer</button>
+            <button class="solid-button" id="resetOffersBtn" type="button">Reload sample offers</button>
+          </div>
+        </div>
+        <div class="hero-meter">
+          <div class="meter-label">How this works</div>
+          <ol class="meter-steps">
+            <li>Choose your discount profile.</li>
+            <li>Filter products or services.</li>
+            <li>Compare the final price and savings instantly.</li>
+          </ol>
+          <p class="meter-footnote">Only the best eligible discount is applied to each offer.</p>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside class="sidebar">
+          <section class="panel">
+            <div class="panel-heading">
+              <p class="section-kicker">Profile</p>
+              <h2>Who is shopping?</h2>
+            </div>
+            <p class="panel-text">
+              Select every discount that applies to you. Offers do not stack, so the app always
+              uses the single best discount for each listing.
+            </p>
+            <div class="profile-list">
+              <label class="toggle">
+                <input id="studentToggle" type="checkbox" />
+                <span class="toggle-copy">
+                  <strong>Student</strong>
+                  <span>Show student-only pricing when available.</span>
+                </span>
+              </label>
+              <label class="toggle">
+                <input id="seniorToggle" type="checkbox" />
+                <span class="toggle-copy">
+                  <strong>Senior</strong>
+                  <span>Reveal senior discounts and age-based offers.</span>
+                </span>
+              </label>
+              <label class="toggle">
+                <input id="serviceToggle" type="checkbox" />
+                <span class="toggle-copy">
+                  <strong>Service Member</strong>
+                  <span>Use military and service member discounts when offered.</span>
+                </span>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel summary-panel">
+            <div class="panel-heading">
+              <p class="section-kicker">Snapshot</p>
+              <h2>Best current view</h2>
+            </div>
+            <div class="summary-grid">
+              <div class="summary-item">
+                <span class="summary-label">Lowest final price</span>
+                <strong class="summary-value" id="lowestPriceValue">$0.00</strong>
+                <span class="summary-detail" id="lowestPriceDetail">Waiting for offers</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Biggest savings</span>
+                <strong class="summary-value" id="largestSavingsValue">$0.00</strong>
+                <span class="summary-detail" id="largestSavingsDetail">Waiting for offers</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Average final price</span>
+                <strong class="summary-value" id="averagePriceValue">$0.00</strong>
+                <span class="summary-detail" id="averagePriceDetail">Waiting for offers</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel" id="offer-form-section">
+            <div class="panel-heading">
+              <p class="section-kicker">Custom input</p>
+              <h2>Add an offer</h2>
+            </div>
+            <form id="offerForm" class="offer-form">
+              <label>
+                Offer name
+                <input id="offerName" name="offerName" type="text" placeholder="Student internet plan" required />
+              </label>
+              <label>
+                Store or provider
+                <input id="providerName" name="providerName" type="text" placeholder="MetroNet" required />
+              </label>
+              <div class="two-up">
+                <label>
+                  Type
+                  <select id="offerType" name="offerType">
+                    <option value="product">Product</option>
+                    <option value="service">Service</option>
+                  </select>
+                </label>
+                <label>
+                  Billing
+                  <select id="billingCycle" name="billingCycle">
+                    <option value="one-time">One-time</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </label>
+              </div>
+              <div class="two-up">
+                <label>
+                  Category
+                  <input id="categoryName" name="categoryName" type="text" placeholder="Internet" required />
+                </label>
+                <label>
+                  Base price
+                  <input
+                    id="basePrice"
+                    name="basePrice"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="49.99"
+                    required
+                  />
+                </label>
+              </div>
+              <div class="discount-inputs">
+                <label>
+                  Student %
+                  <input id="studentDiscount" name="studentDiscount" type="number" min="0" max="100" step="1" placeholder="10" />
+                </label>
+                <label>
+                  Senior %
+                  <input id="seniorDiscount" name="seniorDiscount" type="number" min="0" max="100" step="1" placeholder="15" />
+                </label>
+                <label>
+                  Service member %
+                  <input id="serviceDiscount" name="serviceDiscount" type="number" min="0" max="100" step="1" placeholder="20" />
+                </label>
+              </div>
+              <label>
+                Notes
+                <textarea
+                  id="offerNotes"
+                  name="offerNotes"
+                  rows="3"
+                  placeholder="Anything helpful, like contract length, eligibility details, or bundle perks."
+                ></textarea>
+              </label>
+              <button class="solid-button form-button" type="submit">Save offer</button>
+            </form>
+          </section>
+        </aside>
+
+        <section class="results-area">
+          <div class="results-toolbar">
+            <label class="search-field">
+              <span class="sr-only">Search offers</span>
+              <input id="searchInput" type="search" placeholder="Search products, providers, or categories" />
+            </label>
+            <div class="filter-strip" role="group" aria-label="Filter offers">
+              <button class="filter-chip active" data-filter="all" type="button" aria-pressed="true">All</button>
+              <button class="filter-chip" data-filter="product" type="button" aria-pressed="false">Products</button>
+              <button class="filter-chip" data-filter="service" type="button" aria-pressed="false">Services</button>
+            </div>
+            <label class="sort-field">
+              <span>Sort by</span>
+              <select id="sortSelect">
+                <option value="final-asc">Lowest final price</option>
+                <option value="savings-desc">Largest savings</option>
+                <option value="base-asc">Lowest base price</option>
+                <option value="name-asc">Name A-Z</option>
+              </select>
+            </label>
+          </div>
+
+          <section class="list-shell" aria-live="polite">
+            <div class="list-head">
+              <span>Offer</span>
+              <span>Price breakdown</span>
+              <span>Savings</span>
+            </div>
+            <div id="offersList" class="offers-list"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <template id="offerRowTemplate">
+      <article class="offer-row">
+        <div class="offer-main">
+          <div class="offer-title-line">
+            <h3 class="offer-title"></h3>
+            <span class="offer-type"></span>
+          </div>
+          <p class="offer-provider"></p>
+          <div class="offer-meta"></div>
+          <p class="offer-notes"></p>
+        </div>
+        <div class="offer-pricing">
+          <span class="price-block price-base"></span>
+          <span class="price-block price-discount"></span>
+          <span class="price-block price-final"></span>
+        </div>
+        <div class="offer-actions">
+          <span class="savings-pill"></span>
+          <button class="remove-button" type="button">Remove</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="script.js"></script>
+  </body>
+</html>
+
