@@ -206,7 +206,7 @@
               <li>Current app mode uses local retailer snapshots so GitHub Pages stays safe and fast.</li>
               <li>Each provider card already supports current price, coupon logic, and dated history.</li>
               <li id="liveRequirementsText">
-                To go fully live, connect server-side adapters for retailer APIs, live web search, and your own history plus alert store.
+                Paste third-party URLs to create user-confirmed trackers now; official retailer API adapters can be added later for automated live feeds.
               </li>
             </ul>
           </section>
@@ -260,6 +260,76 @@
                 <button class="solid-button small-button" id="saveWatchBtn" type="button">Watch selected item</button>
               </div>
               <p class="history-note" id="alertStatusText">No watch configured yet.</p>
+            </div>
+          </section>
+
+          <section class="panel custom-source-panel">
+            <div class="panel-heading">
+              <p class="section-kicker">Add sources</p>
+              <h2>Paste a product or service URL</h2>
+            </div>
+            <p class="panel-text">
+              SmartSave can try to read public page metadata, then you confirm the price, coupon, and
+              requirements before adding it to your tracked catalog.
+            </p>
+            <div class="alert-form">
+              <label>
+                Product or service URL
+                <input id="customUrlInput" type="url" placeholder="https://store.example.com/item" />
+              </label>
+              <div class="alert-actions">
+                <button class="ghost-button small-button" id="readUrlBtn" type="button">Read URL</button>
+                <button class="solid-button small-button" id="addCustomItemBtn" type="button">Add tracker</button>
+              </div>
+              <label>
+                Name
+                <input id="customNameInput" type="text" placeholder="Item or service name" />
+              </label>
+              <div class="custom-form-grid">
+                <label>
+                  Type
+                  <select id="customTypeSelect">
+                    <option value="product">Product</option>
+                    <option value="service">Service</option>
+                  </select>
+                </label>
+                <label>
+                  Category
+                  <input id="customCategoryInput" type="text" placeholder="Appliances, Insurance, Streaming" />
+                </label>
+              </div>
+              <div class="custom-form-grid">
+                <label>
+                  Current price
+                  <input id="customCurrentPriceInput" type="number" min="0" step="0.01" placeholder="199.99" />
+                </label>
+                <label>
+                  Regular price
+                  <input id="customRegularPriceInput" type="number" min="0" step="0.01" placeholder="249.99" />
+                </label>
+              </div>
+              <div class="custom-form-grid">
+                <label>
+                  Discount value
+                  <input id="customDiscountValueInput" type="number" min="0" step="0.01" placeholder="10" />
+                </label>
+                <label>
+                  Discount type
+                  <select id="customDiscountTypeSelect">
+                    <option value="percent">Percent off</option>
+                    <option value="fixed">Fixed amount off</option>
+                  </select>
+                </label>
+              </div>
+              <label>
+                Coupon or deal label
+                <input id="customDiscountLabelInput" type="text" placeholder="Newsletter code, student portal, bundle promo" />
+              </label>
+              <label>
+                Deal requirements
+                <textarea id="customRequirementsInput" rows="3" placeholder="One requirement per line, such as account signup, coupon code, pickup only, or verification"></textarea>
+              </label>
+              <p class="history-note" id="customSourceStatus">Paste a URL or enter the details manually.</p>
             </div>
           </section>
 

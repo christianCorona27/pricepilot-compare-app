@@ -65,6 +65,8 @@ It compares:
 - Save watched items with target prices
 - Request browser notification permission for local sale alerts
 - Capture email and text destinations and sync them to a backend subscription route
+- Paste a third-party product or service URL, read public page metadata when available, and add a user-confirmed tracker
+- Add custom products or services manually with current price, regular price, coupons, and deal requirements
 - Match local dealerships and lenders from a ZIP code
 - Re-rank vehicle and home APR results so local matches rise to the top
 - Show bulk discount planners with quantity-break pricing
@@ -79,6 +81,7 @@ It compares:
 
 - `POST /api/watch-alerts` stores alert subscriptions and attempts immediate email or SMS delivery when the current tracked price already meets the target
 - `GET /api/local-match?zip=78704` returns local dealership and lender matches from a seeded ZIP directory
+- `GET /api/link-preview?url=https://example.com/item` attempts to read public page metadata for user-pasted product or service URLs
 - `@hourly` scheduled function `price-alert-sweep` is included for backend alert processing
 - Netlify Blobs storage is used for alert subscription persistence
 - The frontend now stores backend subscription ids alongside the local watchlist
@@ -121,6 +124,7 @@ That means:
 - `script.js` - seeded dataset, pricing rules, watchlists, backend sync calls, ZIP matching behavior, planner logic, APR helpers, chart rendering, and interaction logic
 - `netlify/functions/watch-alerts.mts` - backend alert subscription endpoint
 - `netlify/functions/local-match.mts` - ZIP-based dealership and lender matching endpoint
+- `netlify/functions/link-preview.mts` - safe URL metadata endpoint for pasted third-party pages
 - `netlify/functions/price-alert-sweep.mts` - scheduled backend alert processor
 - `netlify/functions/lib/alerts.mts` - shared alert storage and delivery helpers
 - `netlify/functions/lib/provider-directory.mts` - seeded local provider coverage directory
@@ -178,6 +182,8 @@ That runs the site through `netlify dev`, which enables the local serverless rou
 ## Known Limitations
 
 - Retailer, dealership, and lender pricing data is still seeded, not live scraped or API-fed
+- Pasted URL reading is best-effort metadata extraction; some retailers block automated reads or hide prices behind scripts, accounts, location, or carts
+- User-added trackers depend on the user confirming price and discount details before saving
 - The current GitHub Pages deployment does not run the backend routes
 - Real email and SMS delivery requires Netlify deployment plus provider secrets
 - The scheduled alert sweep currently checks the stored tracked snapshot price, not a live retailer feed

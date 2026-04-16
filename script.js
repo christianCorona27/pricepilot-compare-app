@@ -925,6 +925,19 @@ const plannerQuantityInput = document.querySelector("#plannerQuantityInput");
 const zipCodeInput = document.querySelector("#zipCodeInput");
 const applyZipBtn = document.querySelector("#applyZipBtn");
 const clearZipBtn = document.querySelector("#clearZipBtn");
+const customUrlInput = document.querySelector("#customUrlInput");
+const readUrlBtn = document.querySelector("#readUrlBtn");
+const addCustomItemBtn = document.querySelector("#addCustomItemBtn");
+const customNameInput = document.querySelector("#customNameInput");
+const customTypeSelect = document.querySelector("#customTypeSelect");
+const customCategoryInput = document.querySelector("#customCategoryInput");
+const customCurrentPriceInput = document.querySelector("#customCurrentPriceInput");
+const customRegularPriceInput = document.querySelector("#customRegularPriceInput");
+const customDiscountValueInput = document.querySelector("#customDiscountValueInput");
+const customDiscountTypeSelect = document.querySelector("#customDiscountTypeSelect");
+const customDiscountLabelInput = document.querySelector("#customDiscountLabelInput");
+const customRequirementsInput = document.querySelector("#customRequirementsInput");
+const customSourceStatus = document.querySelector("#customSourceStatus");
 
 const catalogList = document.querySelector("#catalogList");
 const providerGrid = document.querySelector("#providerGrid");
@@ -954,8 +967,48 @@ const summaryNodes = {
   historyValue: document.querySelector("#historyWindowValue"),
   historyDetail: document.querySelector("#historyWindowDetail")
 };
-function saveTrackedCatalog() {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(comparisonData));
+function saveTrackedCatalog(items = state.items.length ? state.items : comparisonData) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function cleanManualText(value, fallback = "") {
+  const cleaned = String(value || "")
+    .replace(/[<>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned || fallback;
+}
+
+function slugify(value) {
+  return cleanManualText(value, "custom-item")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 52) || "custom-item";
+}
+
+function parseMoneyInput(input) {
+  const value = Number.parseFloat(String(input || "").replace(/[$,]/g, ""));
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function getTodayStamp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getHostname(value) {
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "Manual source";
+  }
+}
+
+function splitRequirements(value) {
+  return String(value || "")
+    .split(/\n|;/)
+    .map((entry) => cleanManualText(entry))
+    .filter(Boolean);
 }
 
 function loadWatches() {
@@ -1081,6 +1134,143 @@ function clearZipMatch() {
   saveZipCode();
   renderZipMatches();
   renderApp();
+}
+
+function applyPreviewToCustomForm(preview) {
+  if (preview.title && !customNameInput.value.trim()) {
+    customNameInput.value = preview.title;
+  }
+  if (preview.price && !customCurrentPriceInput.value.trim()) {
+    customCurrentPriceInput.value = preview.price;
+  }
+  if (preview.price && !customRegularPriceInput.value.trim()) {
+    customRegularPriceInput.value = preview.price;
+  }
+  if (!customCategoryInput.value.trim()) {
+    customCategoryInput.value = preview.hostname ? `Web - ${preview.hostname.replace(/^www\./, "")}` : "Web source";
+  }
+}
+
+async function readCustomUrl() {
+  const url = customUrlInput.value.trim();
+  if (!url) {
+    customSourceStatus.textContent = "Paste a product or service URL first.";
+    return;
+  }
+  if (!hasBackendRuntime()) {
+    customSourceStatus.textContent = "URL reading needs the Netlify backend. You can still enter the tracker manually.";
+    return;
+  }
+
+  customSourceStatus.textContent = "Reading public page metadata...";
+  try {
+    const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+    const payload = await readJsonSafe(response);
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || "SmartSave could not read that URL.");
+    }
+    applyPreviewToCustomForm(payload);
+    customSourceStatus.textContent = payload.message || "Metadata loaded. Confirm the price and discount before adding.";
+  } catch (error) {
+    customSourceStatus.textContent = error.message || "Unable to read that URL. Enter the details manually.";
+  }
+}
+
+function buildCustomTracker() {
+  const url = customUrlInput.value.trim();
+  const name = cleanManualText(customNameInput.value, "Custom tracked item");
+  const type = customTypeSelect.value === "service" ? "service" : "product";
+  const category = cleanManualText(customCategoryInput.value, type === "service" ? "Custom service" : "Custom product");
+  const currentPrice = parseMoneyInput(customCurrentPriceInput.value);
+  const regularPrice = parseMoneyInput(customRegularPriceInput.value) ?? currentPrice;
+  const discountValue = parseMoneyInput(customDiscountValueInput.value);
+  const discountType = customDiscountTypeSelect.value === "fixed" ? "fixed" : "percent";
+  const billing = type === "service" ? "monthly" : "one-time";
+
+  if (!currentPrice) {
+    throw new Error("Enter a current price before adding this tracker.");
+  }
+
+  const providerName = getHostname(url);
+  const requirements = splitRequirements(customRequirementsInput.value);
+  const couponLabel = cleanManualText(customDiscountLabelInput.value);
+  const coupons = discountValue
+    ? [{
+        label: couponLabel || (discountType === "percent" ? `${discountValue}% pasted-page discount` : `${formatCurrency(discountValue)} pasted-page discount`),
+        type: discountType,
+        value: discountType === "percent" ? discountValue / 100 : discountValue,
+        combinable: true,
+        requirements: requirements.length ? requirements : ["Confirm the pasted-page discount before checkout."]
+      }]
+    : [];
+  const today = getTodayStamp();
+  const id = `custom-${slugify(name)}-${Date.now()}`;
+
+  return {
+    id,
+    name,
+    type,
+    category,
+    matchMode: url ? "Pasted URL tracker" : "Manual tracker",
+    notes: url
+      ? `User-added tracker from ${providerName}. URL metadata is a starting point; confirm live price and deal terms before checkout.`
+      : "User-added manual tracker. Update the current price when you see new deals.",
+    keywords: [name, category, providerName, type, "custom", "manual", "url"].filter(Boolean),
+    custom: true,
+    providers: [{
+      name: providerName,
+      subtitle: url ? "Pasted third-party source" : "Manual source",
+      billing,
+      regularPrice: regularPrice ?? currentPrice,
+      currentPrice,
+      status: url ? "URL metadata / user confirmed" : "Manual price",
+      lastChecked: today,
+      sourceUrl: url,
+      discounts: {
+        student: null,
+        senior: null,
+        service: null
+      },
+      coupons,
+      dealRequirements: [
+        ...(url ? [`Open ${providerName} to confirm current price, stock, shipping, and coupon availability.`] : ["Manual tracker; confirm current price before purchase."]),
+        ...requirements
+      ],
+      history: [
+        { date: today, price: currentPrice }
+      ]
+    }]
+  };
+}
+
+function clearCustomTrackerForm() {
+  customUrlInput.value = "";
+  customNameInput.value = "";
+  customCategoryInput.value = "";
+  customCurrentPriceInput.value = "";
+  customRegularPriceInput.value = "";
+  customDiscountValueInput.value = "";
+  customDiscountLabelInput.value = "";
+  customRequirementsInput.value = "";
+}
+
+function addCustomTracker() {
+  try {
+    const tracker = buildCustomTracker();
+    state.items = [tracker, ...state.items];
+    state.selectedId = tracker.id;
+    state.searchTerm = "";
+    state.categorySearch = "";
+    state.selectedProductCategory = "";
+    state.selectedServiceCategory = "";
+    searchInput.value = "";
+    saveTrackedCatalog(state.items);
+    clearCustomTrackerForm();
+    customSourceStatus.textContent = `Added ${tracker.name}. It is now searchable and can be watched for alerts.`;
+    renderApp();
+  } catch (error) {
+    customSourceStatus.textContent = error.message || "Unable to add this tracker.";
+  }
 }
 
 async function syncWatchWithBackend(item, best, watch) {
@@ -1736,6 +1926,7 @@ function renderProviders(providers) {
 
     const metaNode = card.querySelector(".provider-meta");
     const metaValues = [
+      ...(provider.sourceUrl ? [`Source ${getHostname(provider.sourceUrl)}`] : []),
       ...(localMatch ? [`ZIP match - ${localMatch.areaLabel}`] : []),
       ...(provider.aprOffer ? [`Best APR ${provider.aprOffer.apr}% - ${provider.aprOffer.label}`] : []),
       `Current markdown ${formatCurrency(provider.currentMarkdown, provider.billing)}`,
@@ -2143,6 +2334,19 @@ function attachEvents() {
   });
 
   clearZipBtn.addEventListener("click", clearZipMatch);
+
+  readUrlBtn.addEventListener("click", () => {
+    void readCustomUrl();
+  });
+
+  customUrlInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void readCustomUrl();
+    }
+  });
+
+  addCustomItemBtn.addEventListener("click", addCustomTracker);
 
   saveWatchBtn.addEventListener("click", () => {
     void saveSelectedWatch();
