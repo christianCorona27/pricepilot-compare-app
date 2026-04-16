@@ -877,6 +877,7 @@ comparisonData.push(
 );
 
 const WATCH_STORAGE_KEY = "pricepilot-watch-settings-v1";
+const ZIP_STORAGE_KEY = "pricepilot-local-zip-v1";
 
 const state = {
   items: [],
@@ -888,6 +889,9 @@ const state = {
   plannerQuantity: 1,
   watches: {},
   notificationPermission: "default",
+  zipCode: "",
+  zipMatches: {},
+  zipMatchSummary: "No ZIP match is active yet.",
   profile: {
     student: false,
     senior: false,
@@ -912,6 +916,9 @@ const textAlertInput = document.querySelector("#textAlertInput");
 const enableNotificationsBtn = document.querySelector("#enableNotificationsBtn");
 const saveWatchBtn = document.querySelector("#saveWatchBtn");
 const plannerQuantityInput = document.querySelector("#plannerQuantityInput");
+const zipCodeInput = document.querySelector("#zipCodeInput");
+const applyZipBtn = document.querySelector("#applyZipBtn");
+const clearZipBtn = document.querySelector("#clearZipBtn");
 
 const catalogList = document.querySelector("#catalogList");
 const providerGrid = document.querySelector("#providerGrid");
@@ -924,6 +931,8 @@ const historyNote = document.querySelector("#historyNote");
 const liveRequirementsText = document.querySelector("#liveRequirementsText");
 const dataModeNote = document.querySelector("#dataModeNote");
 const alertStatusText = document.querySelector("#alertStatusText");
+const zipMatchStatus = document.querySelector("#zipMatchStatus");
+const zipMatchList = document.querySelector("#zipMatchList");
 const watchlistItems = document.querySelector("#watchlistItems");
 const plannerGrid = document.querySelector("#plannerGrid");
 
@@ -958,6 +967,158 @@ function loadWatches() {
 
 function saveWatches() {
   window.localStorage.setItem(WATCH_STORAGE_KEY, JSON.stringify(state.watches));
+}
+
+function loadZipCode() {
+  return window.localStorage.getItem(ZIP_STORAGE_KEY) || "";
+}
+
+function saveZipCode() {
+  if (state.zipCode) {
+    window.localStorage.setItem(ZIP_STORAGE_KEY, state.zipCode);
+    return;
+  }
+
+  window.localStorage.removeItem(ZIP_STORAGE_KEY);
+}
+
+function hasBackendRuntime() {
+  return window.location.protocol === "http:" || window.location.protocol === "https:";
+}
+
+async function readJsonSafe(response) {
+  const text = await response.text();
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return {};
+  }
+}
+
+function getLocalKindForItem(item) {
+  if (item.category === "Vehicle") {
+    return "vehicle";
+  }
+  if (item.category === "Home APR") {
+    return "home";
+  }
+  return null;
+}
+
+function getZipMatch(providerName, kind = null) {
+  const match = state.zipMatches[providerName];
+  if (!match) {
+    return null;
+  }
+  if (kind && match.kind !== kind) {
+    return null;
+  }
+  return match;
+}
+
+function setZipMatches(payload) {
+  state.zipMatches = Object.fromEntries(payload.matchedProviders.map((provider) => [provider.name, provider]));
+  state.zipMatchSummary = payload.summary;
+}
+
+async function applyZipMatch() {
+  const normalizedZip = zipCodeInput.value.trim().replace(/[^\d]/g, "").slice(0, 5);
+  state.zipCode = normalizedZip;
+  saveZipCode();
+
+  if (normalizedZip.length !== 5) {
+    state.zipMatches = {};
+    state.zipMatchSummary = "Enter a valid 5-digit ZIP code to match local dealerships and lenders.";
+    renderZipMatches();
+    renderApp();
+    return;
+  }
+
+  if (!hasBackendRuntime()) {
+    state.zipMatches = {};
+    state.zipMatchSummary = `Saved ${normalizedZip}. ZIP-based local matching becomes active when this app runs through Netlify or another backend-enabled host.`;
+    renderZipMatches();
+    renderApp();
+    return;
+  }
+
+  zipMatchStatus.textContent = `Matching local providers near ${normalizedZip}...`;
+
+  try {
+    const response = await fetch(`/api/local-match?zip=${encodeURIComponent(normalizedZip)}`);
+    const payload = await readJsonSafe(response);
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Unable to match local providers right now.");
+    }
+
+    setZipMatches(payload);
+  } catch (error) {
+    state.zipMatches = {};
+    state.zipMatchSummary = `${error.message} If you are still on GitHub Pages, deploy this build on Netlify to enable the backend route.`;
+  }
+
+  renderZipMatches();
+  renderApp();
+}
+
+function clearZipMatch() {
+  state.zipCode = "";
+  state.zipMatches = {};
+  state.zipMatchSummary = "No ZIP match is active yet.";
+  zipCodeInput.value = "";
+  saveZipCode();
+  renderZipMatches();
+  renderApp();
+}
+
+async function syncWatchWithBackend(item, best, watch) {
+  if (!watch.email && !watch.text) {
+    return "Saved locally. Add an email or text number if you want the backend to send real alerts too.";
+  }
+
+  if (!hasBackendRuntime()) {
+    return "Saved locally. Real email and text alerts become active when this build runs through Netlify or another backend-enabled host.";
+  }
+
+  const response = await fetch("/api/watch-alerts", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      itemId: item.id,
+      itemName: item.name,
+      itemCategory: item.category,
+      billing: best.billing,
+      targetPrice: watch.targetPrice,
+      currentPrice: best.finalPrice,
+      bestProviderName: best.name,
+      zipCode: state.zipCode,
+      email: watch.email,
+      text: watch.text,
+      profile: state.profile
+    })
+  });
+
+  const payload = await readJsonSafe(response);
+  if (!response.ok) {
+    throw new Error(payload.error || "Unable to save the backend alert right now.");
+  }
+
+  state.watches[item.id] = {
+    ...state.watches[item.id],
+    backendSyncedAt: new Date().toISOString(),
+    backendSubscriptionId: payload.subscriptionId || null
+  };
+  saveWatches();
+  renderWatchlist();
+
+  return payload.message || "Backend alert saved.";
 }
 
 function getItemById(itemId) {
@@ -1020,7 +1181,7 @@ function maybeTriggerWatchNotifications() {
   });
 }
 
-function saveSelectedWatch() {
+async function saveSelectedWatch() {
   const item = getItemById(state.selectedId);
   if (!item) {
     alertStatusText.textContent = "Select an item before saving a watch.";
@@ -1043,9 +1204,19 @@ function saveSelectedWatch() {
     lastNotifiedPrice: null
   };
   saveWatches();
-  alertStatusText.textContent = `Saved watch for ${item.name}. Browser alerts ${state.notificationPermission === "granted" ? "enabled" : "will stay in-app until permission is granted"}.`;
   renderWatchlist();
   maybeTriggerWatchNotifications();
+
+  const browserMessage = state.notificationPermission === "granted"
+    ? "Browser alerts are enabled."
+    : "Browser alerts stay local until permission is granted.";
+
+  try {
+    const backendMessage = await syncWatchWithBackend(item, best, state.watches[item.id]);
+    alertStatusText.textContent = `Saved watch for ${item.name}. ${browserMessage} ${backendMessage}`;
+  } catch (error) {
+    alertStatusText.textContent = `Saved watch for ${item.name}. ${browserMessage} ${error.message}`;
+  }
 }
 
 function removeWatch(itemId) {
@@ -1074,6 +1245,7 @@ function hydrateState() {
   state.items = loadTrackedCatalog();
   state.watches = loadWatches();
   state.notificationPermission = ("Notification" in window) ? Notification.permission : "unsupported";
+  state.zipCode = loadZipCode();
   const firstItem = state.items[0];
   state.selectedId = firstItem ? firstItem.id : null;
 }
@@ -1221,10 +1393,21 @@ function getProviderComparison(provider, item) {
 }
 
 function getVisibleProviderComparisons(item) {
+  const localKind = getLocalKindForItem(item);
   return item.providers
     .filter((provider) => state.providerVisibility[provider.name] !== false)
     .map((provider) => getProviderComparison(provider, item))
-    .sort((a, b) => a.finalPrice - b.finalPrice || b.savings - a.savings);
+    .sort((a, b) => {
+      if (localKind && state.zipCode) {
+        const aLocal = getZipMatch(a.name, localKind) ? 1 : 0;
+        const bLocal = getZipMatch(b.name, localKind) ? 1 : 0;
+        if (aLocal !== bLocal) {
+          return bLocal - aLocal;
+        }
+      }
+
+      return a.finalPrice - b.finalPrice || b.savings - a.savings;
+    });
 }
 
 function getFilteredItems() {
@@ -1385,6 +1568,9 @@ function renderSelectedItem(item) {
   if (item.providerComparisons.some((provider) => provider.aprOffer)) {
     badgeLabels.push("APR comparison");
   }
+  if (state.zipCode && getLocalKindForItem(item)) {
+    badgeLabels.push(`ZIP ${state.zipCode}`);
+  }
   if (state.watches[item.id]) {
     badgeLabels.push("Watched");
   }
@@ -1414,6 +1600,7 @@ function renderProviders(providers) {
 
   providers.forEach((provider, index) => {
     const card = providerCardTemplate.content.firstElementChild.cloneNode(true);
+    const localMatch = getZipMatch(provider.name, getLocalKindForItem({ category: provider.category }));
     card.querySelector(".provider-name").textContent = provider.name;
     card.querySelector(".provider-rank").textContent = `#${index + 1}`;
     card.querySelector(".provider-subtitle").textContent = `${provider.subtitle} - Updated ${formatDate(provider.lastChecked)}`;
@@ -1425,6 +1612,7 @@ function renderProviders(providers) {
 
     const metaNode = card.querySelector(".provider-meta");
     const metaValues = [
+      ...(localMatch ? [`ZIP match - ${localMatch.areaLabel}`] : []),
       ...(provider.aprOffer ? [`Best APR ${provider.aprOffer.apr}% - ${provider.aprOffer.label}`] : []),
       `Current markdown ${formatCurrency(provider.currentMarkdown, provider.billing)}`,
       `Total markdown ${formatCurrency(provider.savings, provider.billing)}`,
@@ -1566,6 +1754,37 @@ function renderHistoryChart(providers) {
 
   historyNote.textContent = `${formatDate(dates[0])} to ${formatDate(dates[dates.length - 1])} - ${providers.length} providers visible`;
 }
+
+function renderZipMatches() {
+  zipMatchStatus.textContent = state.zipMatchSummary;
+  zipMatchList.innerHTML = "";
+
+  const matches = Object.values(state.zipMatches);
+  if (!matches.length) {
+    zipMatchList.innerHTML = '<div class="empty-state">Matched dealerships and lenders will show up here once a ZIP is applied.</div>';
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  matches.forEach((match) => {
+    const card = document.createElement("article");
+    card.className = "zip-match-card";
+    card.innerHTML = `
+      <div class="watchlist-card-header">
+        <div>
+          <h4>${match.name}</h4>
+          <p class="history-note">${match.kind === "vehicle" ? "Dealership" : "Lender"} - ${match.areaLabel}</p>
+        </div>
+        <span class="meta-pill">${match.matchType === "exact" ? "Exact ZIP" : "Area ZIP"}</span>
+      </div>
+      <p class="history-note">${match.notes}</p>
+    `;
+    fragment.appendChild(card);
+  });
+
+  zipMatchList.appendChild(fragment);
+}
+
 function renderWatchlist() {
   watchlistItems.innerHTML = "";
   const entries = Object.entries(state.watches);
@@ -1594,6 +1813,7 @@ function renderWatchlist() {
       <div class="watchlist-meta">
         <span class="meta-pill">${watch.email || "No email"}</span>
         <span class="meta-pill">${watch.text || "No text"}</span>
+        ${watch.backendSyncedAt ? `<span class="meta-pill">Backend synced</span>` : ""}
       </div>
       <div class="watchlist-actions">
         <button class="text-button" type="button" data-jump-watch="${itemId}">Open</button>
@@ -1703,10 +1923,11 @@ function renderApp() {
   updateSummary(filteredItems);
   renderCatalog(filteredItems);
   renderSelectedItem(selectedItem);
+  renderZipMatches();
   renderWatchlist();
   maybeTriggerWatchNotifications();
   dataModeNote.textContent = `Source mode: ${Object.values(state.providerVisibility).filter(Boolean).length} provider adapters enabled in this comparison view.`;
-  liveRequirementsText.textContent = "To go live, connect server-side adapters for supported retailer APIs, live web search, dated snapshot storage, and secure email or text notification services.";
+  liveRequirementsText.textContent = "This build now includes Netlify-ready backend routes for ZIP matching and alert subscriptions. Configure email or SMS provider secrets to make those notifications fully live.";
 }
 
 function attachEvents() {
@@ -1766,7 +1987,26 @@ function attachEvents() {
 
   enableNotificationsBtn.addEventListener("click", requestBrowserNotifications);
 
-  saveWatchBtn.addEventListener("click", saveSelectedWatch);
+  zipCodeInput.addEventListener("input", (event) => {
+    event.target.value = event.target.value.replace(/[^\d]/g, "").slice(0, 5);
+  });
+
+  zipCodeInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void applyZipMatch();
+    }
+  });
+
+  applyZipBtn.addEventListener("click", () => {
+    void applyZipMatch();
+  });
+
+  clearZipBtn.addEventListener("click", clearZipMatch);
+
+  saveWatchBtn.addEventListener("click", () => {
+    void saveSelectedWatch();
+  });
 
   plannerQuantityInput.addEventListener("input", (event) => {
     const nextValue = Number.parseInt(event.target.value, 10);
@@ -1777,6 +2017,7 @@ function attachEvents() {
   resetDataBtn.addEventListener("click", () => {
     window.localStorage.removeItem(STORAGE_KEY);
     window.localStorage.removeItem(WATCH_STORAGE_KEY);
+    window.localStorage.removeItem(ZIP_STORAGE_KEY);
     hydrateState();
     renderApp();
   });
@@ -1784,8 +2025,12 @@ function attachEvents() {
 
 function init() {
   hydrateState();
+  zipCodeInput.value = state.zipCode;
   attachEvents();
   renderApp();
+  if (state.zipCode) {
+    void applyZipMatch();
+  }
 }
 
 init();

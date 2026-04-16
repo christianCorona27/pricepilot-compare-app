@@ -211,6 +211,28 @@
             </ul>
           </section>
 
+          <section class="panel zip-panel">
+            <div class="panel-heading">
+              <p class="section-kicker">Local Match</p>
+              <h2>ZIP-based matching</h2>
+            </div>
+            <p class="panel-text">
+              Enter a ZIP code to rank the seeded dealership and lender results around your area.
+            </p>
+            <div class="alert-form">
+              <label>
+                ZIP code
+                <input id="zipCodeInput" type="text" inputmode="numeric" maxlength="5" placeholder="78704" />
+              </label>
+              <div class="alert-actions">
+                <button class="ghost-button small-button" id="applyZipBtn" type="button">Match local providers</button>
+                <button class="ghost-button small-button" id="clearZipBtn" type="button">Clear ZIP</button>
+              </div>
+              <p class="history-note" id="zipMatchStatus">No ZIP match is active yet.</p>
+              <div id="zipMatchList" class="zip-match-list"></div>
+            </div>
+          </section>
+
           <section class="panel alerts-panel">
             <div class="panel-heading">
               <p class="section-kicker">Alerts</p>
@@ -218,7 +240,7 @@
             </div>
             <p class="panel-text">
               Save the selected item to your watchlist, set a target price, and store email or text
-              preferences for the backend-ready notification flow.
+              preferences for the backend-powered notification flow.
             </p>
             <div class="alert-form">
               <label>

@@ -1,0 +1,15 @@
+{
+  "name": "pricepilot-compare-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "latest"
+  },
+  "devDependencies": {
+    "@netlify/functions": "latest",
+    "netlify-cli": "latest"
+  }
+}

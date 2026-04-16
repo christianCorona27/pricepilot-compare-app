@@ -400,7 +400,8 @@ h1 {
 .alert-actions,
 .watchlist-items,
 .planner-grid,
-.planner-toolbar {
+.planner-toolbar,
+.zip-match-list {
   display: grid;
   gap: 0.85rem;
 }
@@ -674,6 +675,24 @@ textarea:focus,
   padding: 0.95rem;
   display: grid;
   gap: 0.65rem;
+}
+
+.zip-match-list {
+  grid-template-columns: 1fr;
+}
+
+.zip-match-card {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(10, 10, 10, 0.18);
+  padding: 0.85rem 0.95rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.zip-match-card h4 {
+  margin: 0;
+  font-size: 0.98rem;
 }
 
 .watchlist-card-header,
