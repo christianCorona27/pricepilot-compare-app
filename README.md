@@ -4,7 +4,8 @@ SmartSave is a search-first comparison dashboard for products, services, cars, a
 
 ## Live Demo
 
-- Frontend demo: [SmartSave](https://christiancorona27.github.io/smartSave/)
+- Backend-enabled demo: [SmartSave on Netlify](https://smartsave-compare.netlify.app/)
+- GitHub Pages frontend: [SmartSave](https://christiancorona27.github.io/smartSave/)
 - Repo: [christianCorona27/smartSave](https://github.com/christianCorona27/smartSave)
 
 ## What It Does
