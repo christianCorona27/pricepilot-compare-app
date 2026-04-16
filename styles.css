@@ -220,6 +220,23 @@ h4 {
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
 }
 
+.architecture-note,
+.demo-explainer,
+.tracker-gap-note {
+  margin: 0;
+  color: var(--muted-strong);
+  line-height: 1.55;
+}
+
+.architecture-note {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(59, 130, 246, 0.08);
+  font-size: 0.92rem;
+}
+
 .hero-url-label {
   color: var(--primary-strong);
   font-size: 0.78rem;
@@ -314,6 +331,24 @@ h4 {
   font-size: clamp(1.4rem, 3vw, 2rem);
 }
 
+.preview-result-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(4, 10, 20, 0.38);
+}
+
+.hero-value-insight {
+  display: block;
+  margin-top: 0.28rem;
+  color: var(--text-strong);
+  font-size: 0.94rem;
+  line-height: 1.4;
+}
+
 .hero-create-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -344,6 +379,7 @@ h4 {
   padding: 0.82rem 1.12rem;
   border-radius: 999px;
   font-weight: 800;
+  text-decoration: none;
 }
 
 .solid-button {
@@ -431,6 +467,45 @@ h4 {
   color: #04120a;
   background: var(--primary);
   font-weight: 900;
+}
+
+.demo-explorer {
+  min-width: 0;
+}
+
+.demo-explorer > summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  min-height: 3.2rem;
+  padding: 0.95rem 1.05rem;
+  border: 1px dashed rgba(250, 204, 21, 0.34);
+  border-radius: var(--radius-md);
+  color: var(--text-strong);
+  background: rgba(250, 204, 21, 0.07);
+  cursor: pointer;
+  font-weight: 900;
+  list-style: none;
+}
+
+.demo-explorer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.demo-explorer[open] > summary {
+  border-color: rgba(250, 204, 21, 0.52);
+  background: rgba(250, 204, 21, 0.1);
+}
+
+.demo-explorer > .demo-explainer,
+.demo-reset-button {
+  margin-top: 0.8rem;
+}
+
+.demo-sidebar-explorer {
+  display: grid;
+  gap: 0.95rem;
 }
 
 .meter-footnote {
@@ -1401,6 +1476,7 @@ textarea:focus,
   .browse-grid,
   .hero-url-row,
   .hero-preview-panel,
+  .preview-result-grid,
   .hero-create-grid,
   .list-head,
   .catalog-card,

@@ -6,7 +6,7 @@
     <title>SmartSave</title>
     <meta
       name="description"
-      content="SmartSave tracks a public product URL, reads the title and price, stores a target price, and sends an email alert when the scheduled backend check finds the target price."
+      content="SmartSave reads a public product page, stores a target price, and sends an email alert when scheduled backend checks find the target price."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -21,21 +21,21 @@
       <header class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Live URL price tracking</p>
-          <h1>Paste a product URL. Get one clear price alert.</h1>
+          <h1>Avoid overpaying. Track the page price.</h1>
           <p class="hero-text">
-            SmartSave now focuses on one real workflow: read a public product page, confirm the extracted price,
-            save a target price, and let the Netlify backend re-check it on a schedule for email alerts.
+            Paste a public product page, confirm the price SmartSave can read, set your target, and let the backend
+            check for the drop.
           </p>
           <section class="hero-url-card" aria-label="Paste a product URL to start tracking">
             <label class="hero-url-label" for="heroUrlInput">Product URL</label>
             <div class="hero-url-row">
               <input id="heroUrlInput" type="url" placeholder="https://store.example.com/product" />
               <button class="solid-button hero-url-button" id="heroFindPriceBtn" type="button">
-                Find My Best Price
+                Check This Price
               </button>
             </div>
             <p class="hero-preview-status" id="heroPreviewStatus">
-              Paste a public product page. SmartSave will extract the product details it can read.
+              Paste a public product page. SmartSave reads public metadata only and asks you to confirm the result.
             </p>
             <div class="hero-preview-panel" id="heroPreviewPanel" hidden>
               <div class="hero-preview-media">
@@ -47,7 +47,16 @@
                 <span id="heroConfidenceBadge" class="confidence-badge confidence-low">Low confidence - manual confirmation required</span>
                 <h2 id="heroPreviewTitle">Product title</h2>
                 <p id="heroPreviewMeta" class="history-note">Source details will appear here.</p>
-                <strong id="heroPreviewPrice" class="hero-preview-price">--</strong>
+                <div class="preview-result-grid" aria-label="Parsed product result">
+                  <div>
+                    <span class="provider-label">Detected price</span>
+                    <strong id="heroPreviewPrice" class="hero-preview-price">--</strong>
+                  </div>
+                  <div>
+                    <span class="provider-label">Value insight</span>
+                    <strong id="heroValueInsight" class="hero-value-insight">Waiting for a readable price</strong>
+                  </div>
+                </div>
                 <div class="hero-create-grid">
                   <label>
                     Target price
@@ -58,27 +67,31 @@
                     <input id="heroEmailInput" type="email" placeholder="you@example.com" />
                   </label>
                 </div>
+                <p class="tracker-gap-note" id="heroTargetDelta">Set a target below the detected price to get a drop alert.</p>
                 <button class="solid-button hero-create-button" id="heroCreateTrackerBtn" type="button">
-                  Create Tracker
+                  Save Tracker
                 </button>
               </div>
             </div>
           </section>
           <div class="hero-actions">
-            <button class="solid-button" id="jumpToSearchBtn" type="button">Track a URL</button>
-            <button class="ghost-button" id="resetDataBtn" type="button">Reset demo data</button>
+            <button class="solid-button" id="jumpToSearchBtn" type="button">Start with a URL</button>
+            <a class="ghost-button hero-demo-link" href="#demoExplorer">Explore demo features</a>
           </div>
+          <p class="architecture-note">
+            Architecture: Netlify Functions parse page metadata, Netlify Blobs store trackers, and a scheduled backend check refreshes prices.
+          </p>
         </div>
         <div class="hero-meter">
-          <div class="meter-label">Competition-ready scope</div>
+          <div class="meter-label">One real workflow</div>
           <ol class="meter-steps workflow-steps">
             <li>Paste a public product URL.</li>
-            <li>SmartSave extracts title, price, image, and source metadata.</li>
+            <li>SmartSave reads title, price, image, and source metadata when available.</li>
             <li>You set a target price and email.</li>
             <li>The scheduled backend re-fetches the page and emails when the target is met.</li>
           </ol>
           <p class="meter-footnote" id="dataModeNote">
-            Live workflow: pasted URL trackers are stored in Netlify Blobs and checked hourly. Demo catalog data is labeled separately.
+            Live trackers use public page metadata. Demo catalog data is separate and labeled as demo-only.
           </p>
         </div>
       </header>
@@ -91,15 +104,15 @@
               <h2>Track a public product URL</h2>
             </div>
             <p class="panel-text">
-              Use a public product page that exposes price metadata. If a retailer hides prices behind JavaScript,
-              account login, location, or cart state, SmartSave will say so instead of pretending it has live data.
+              Use a public product page that exposes price metadata. If a site hides prices behind JavaScript,
+              account login, location, or cart state, SmartSave shows the limitation instead of presenting it as live data.
             </p>
             <div class="alert-form">
               <label>
                 Product URL
                 <input id="customUrlInput" type="url" placeholder="https://store.example.com/product" />
               </label>
-              <button class="ghost-button small-button" id="readUrlBtn" type="button">Extract title and price</button>
+              <button class="ghost-button small-button" id="readUrlBtn" type="button">Read price from page</button>
               <label>
                 Extracted title
                 <input id="customNameInput" type="text" placeholder="Loaded from page metadata" />
@@ -132,6 +145,7 @@
                 <textarea id="customRequirementsInput"></textarea>
               </div>
               <button class="solid-button small-button" id="addCustomItemBtn" type="button">Save live tracker</button>
+              <p class="tracker-gap-note" id="customTargetDelta">After saving, the backend stores this tracker and checks it on schedule.</p>
               <p class="history-note" id="customSourceStatus">Paste a URL, extract metadata, then set a target price and email.</p>
             </div>
           </section>
@@ -147,13 +161,22 @@
             <div id="watchlistItems" class="watchlist-items"></div>
           </section>
 
+          <details class="demo-explorer demo-sidebar-explorer">
+            <summary>
+              <span>Explore demo controls</span>
+              <span class="data-badge status-demo">Demo Data</span>
+            </summary>
+            <p class="demo-explainer">
+              These controls only demonstrate UI logic for eligibility, local matching, and seeded examples.
+            </p>
+            <button class="ghost-button small-button demo-reset-button" id="resetDataBtn" type="button">Reset demo data</button>
           <section class="panel alerts-panel">
             <div class="panel-heading">
               <p class="section-kicker">Local Browser</p>
               <h2>Optional demo watch</h2>
             </div>
             <p class="panel-text">
-              For seeded demo items, this saves a local browser watch only. It is not a live retailer feed.
+              For seeded demo items, this saves a local browser watch only. It is not connected to retailer feeds.
             </p>
             <div class="alert-form">
               <div class="alert-actions">
@@ -200,7 +223,7 @@
             </div>
             <div class="summary-grid">
               <div class="summary-item">
-                <span class="summary-label">Cheapest visible price</span>
+                <span class="summary-label">Lowest modeled demo price</span>
                 <strong class="summary-value" id="lowestPriceValue">$0.00</strong>
                 <span class="summary-detail" id="lowestPriceDetail">Waiting for results</span>
               </div>
@@ -259,9 +282,17 @@
               <div id="zipMatchList" class="zip-match-list"></div>
             </div>
           </section>
+          </details>
         </aside>
 
-        <section class="results-area">
+        <details class="results-area demo-explorer" id="demoExplorer">
+          <summary>
+            <span>Explore Demo Features</span>
+            <span class="data-badge status-demo">Demo Data</span>
+          </summary>
+          <p class="demo-explainer">
+            Demo catalog data is for UI exploration and logic demonstration only. It is not connected to live providers.
+          </p>
           <div class="results-toolbar" id="searchSection">
             <label class="search-field search-field-wide">
               <span>Search demo catalog and saved URL trackers</span>
@@ -279,7 +310,7 @@
             <label class="sort-field">
               <span>Sort by</span>
               <select id="sortSelect">
-                <option value="final-asc">Cheapest visible price</option>
+                <option value="final-asc">Lowest modeled demo price</option>
                 <option value="markdown-desc">Largest demo markdown</option>
                 <option value="providers-desc">Most demo sources</option>
                 <option value="name-asc">Name A-Z</option>
@@ -321,7 +352,7 @@
           <section class="catalog-shell" aria-live="polite">
             <div class="list-head catalog-head">
               <span>Item</span>
-              <span>Visible price</span>
+              <span>Modeled price</span>
               <span>Source count</span>
             </div>
             <div id="catalogList" class="catalog-list"></div>
@@ -338,7 +369,7 @@
                   <p class="section-kicker">Inspector</p>
                   <h2 id="selectedTitle">Select a tracker or demo item</h2>
                   <p class="detail-description" id="selectedDescription">
-                    Live URL trackers show the saved page source. Demo items show seeded comparison behavior only.
+                    Live URL trackers show saved page data. Demo items show seeded comparison behavior only.
                   </p>
                 </div>
               </div>
@@ -362,8 +393,8 @@
 
             <section class="providers-shell">
               <div class="providers-head">
-                <p class="section-kicker">Comparison</p>
-                <h3>Current visible sources</h3>
+                <p class="section-kicker">Demo Comparison</p>
+                <h3>Modeled sources</h3>
               </div>
               <div id="providerGrid" class="provider-grid"></div>
             </section>
@@ -385,7 +416,7 @@
               <div id="plannerGrid" class="planner-grid"></div>
             </section>
           </section>
-        </section>
+        </details>
       </main>
     </div>
 
@@ -410,7 +441,7 @@
           <span class="price-block catalog-average"></span>
         </div>
         <div class="catalog-side">
-          <span class="best-for-you-badge catalog-personal-best" hidden>Best deal for YOU</span>
+          <span class="best-for-you-badge catalog-personal-best" hidden>Best modeled option</span>
           <span class="savings-pill catalog-pill"></span>
           <span class="catalog-reason"></span>
           <span class="catalog-count"></span>

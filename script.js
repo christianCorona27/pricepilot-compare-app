@@ -1190,8 +1190,10 @@ const heroPreviewFallback = document.querySelector("#heroPreviewFallback");
 const heroPreviewTitle = document.querySelector("#heroPreviewTitle");
 const heroPreviewMeta = document.querySelector("#heroPreviewMeta");
 const heroPreviewPrice = document.querySelector("#heroPreviewPrice");
+const heroValueInsight = document.querySelector("#heroValueInsight");
 const heroConfidenceBadge = document.querySelector("#heroConfidenceBadge");
 const heroTargetPriceInput = document.querySelector("#heroTargetPriceInput");
+const heroTargetDelta = document.querySelector("#heroTargetDelta");
 const heroEmailInput = document.querySelector("#heroEmailInput");
 const heroCreateTrackerBtn = document.querySelector("#heroCreateTrackerBtn");
 const jumpToSearchBtn = document.querySelector("#jumpToSearchBtn");
@@ -1218,6 +1220,7 @@ const customDiscountTypeSelect = document.querySelector("#customDiscountTypeSele
 const customDiscountLabelInput = document.querySelector("#customDiscountLabelInput");
 const customRequirementsInput = document.querySelector("#customRequirementsInput");
 const customSourceStatus = document.querySelector("#customSourceStatus");
+const customTargetDelta = document.querySelector("#customTargetDelta");
 
 const catalogList = document.querySelector("#catalogList");
 const providerGrid = document.querySelector("#providerGrid");
@@ -1516,11 +1519,40 @@ function applyPreviewToCustomForm(preview, overwrite = false) {
   if (overwrite || !customCategoryInput.value.trim()) {
     customCategoryInput.value = preview.hostname ? `Web - ${preview.hostname.replace(/^www\./, "")}` : "Web product";
   }
+  updateTrackerDeltaText();
 }
 
 function setHeroPreviewStatus(message, isError = false) {
   heroPreviewStatus.textContent = message;
   heroPreviewStatus.classList.toggle("is-error", isError);
+}
+
+function getTargetDeltaMessage(currentPrice, targetPrice) {
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+    return "No readable price yet. Confirm the page result before creating a tracker.";
+  }
+  if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
+    return "Set a target below the detected price to get a drop alert.";
+  }
+
+  const difference = currentPrice - targetPrice;
+  if (difference > 0) {
+    return `Target is ${formatCurrency(difference)} below the detected price. SmartSave alerts when the page reaches it.`;
+  }
+  if (difference === 0) {
+    return "Target matches the detected price. Saving can trigger an immediate alert attempt.";
+  }
+  return `Target is ${formatCurrency(Math.abs(difference))} above the detected price. This may alert immediately after saving.`;
+}
+
+function updateTrackerDeltaText() {
+  const previewPrice = Number(state.customPreview?.price);
+  const heroTarget = parseMoneyInput(heroTargetPriceInput.value);
+  const customPrice = parseMoneyInput(customCurrentPriceInput.value);
+  const customTarget = parseMoneyInput(targetPriceInput.value);
+
+  heroTargetDelta.textContent = getTargetDeltaMessage(previewPrice, heroTarget);
+  customTargetDelta.textContent = getTargetDeltaMessage(customPrice, customTarget);
 }
 
 function renderHeroPreview(preview) {
@@ -1529,12 +1561,16 @@ function renderHeroPreview(preview) {
   const confidence = getConfidenceMeta(preview.confidence);
   heroPreviewMeta.textContent = `${preview.hostname || "Unknown source"} - ${confidence.detail}`;
   heroPreviewPrice.textContent = preview.price ? formatCurrency(preview.price) : "Price not found";
+  heroValueInsight.textContent = preview.price
+    ? "Use this detected page price as the starting point for a target alert."
+    : "No reliable price was found. Confirm manually or try another public product page.";
   applyConfidenceBadge(heroConfidenceBadge, preview.confidence);
   setImageWithFallback(heroPreviewImage, heroPreviewFallback, preview.image, preview.title || preview.hostname || "SmartSave");
 
   if (preview.price && !heroTargetPriceInput.value.trim()) {
     heroTargetPriceInput.value = Math.max(1, preview.price * 0.85).toFixed(2);
   }
+  updateTrackerDeltaText();
 }
 
 async function readHeroUrl() {
@@ -1560,7 +1596,7 @@ async function readHeroUrl() {
     }
     applyPreviewToCustomForm(payload, true);
     renderHeroPreview(payload);
-    setHeroPreviewStatus(payload.message || "Product details found. Add a target price and email to create the tracker.");
+    setHeroPreviewStatus(payload.message || "Readable product details found. Confirm the price, then set a target and email.");
     return payload;
   } catch (error) {
     setHeroPreviewStatus(error.message || "Unable to read that URL. Try another public product page.", true);
@@ -1582,6 +1618,7 @@ async function createHeroTracker() {
   customUrlInput.value = url || state.customPreview.url || customUrlInput.value;
   targetPriceInput.value = heroTargetPriceInput.value;
   emailAlertInput.value = heroEmailInput.value;
+  updateTrackerDeltaText();
 
   if (!targetPriceInput.value.trim()) {
     setHeroPreviewStatus("Enter a target price before creating the tracker.", true);
@@ -1598,9 +1635,11 @@ async function createHeroTracker() {
   heroCreateTrackerBtn.disabled = false;
 
   if (saved) {
-    setHeroPreviewStatus("Tracker created. It is saved below and synced with the backend when available.");
+    setHeroPreviewStatus("Tracker saved. Scheduled backend checks will refresh the price and email when the target is reached.");
+    heroValueInsight.textContent = "Saved tracker: price history updates after backend refreshes.";
     heroTargetPriceInput.value = "";
     heroEmailInput.value = "";
+    updateTrackerDeltaText();
   }
 }
 
@@ -1715,6 +1754,7 @@ function clearCustomTrackerForm() {
   customDiscountLabelInput.value = "";
   customRequirementsInput.value = "";
   state.customPreview = null;
+  updateTrackerDeltaText();
 }
 
 async function addCustomTracker() {
@@ -1757,6 +1797,7 @@ async function addCustomTracker() {
     clearCustomTrackerForm();
     targetPriceInput.value = "";
     emailAlertInput.value = "";
+    updateTrackerDeltaText();
     customSourceStatus.textContent = `Saved ${tracker.name}. ${backendMessage}`;
     renderApp();
     return true;
@@ -1813,7 +1854,10 @@ async function syncWatchWithBackend(item, best, watch) {
   saveWatches();
   renderWatchlist();
 
-  return payload.message || "Backend URL tracker saved.";
+  const emailNotice = payload.emailConfigured === false
+    ? " Email delivery still needs RESEND_API_KEY and ALERT_FROM_EMAIL in Netlify."
+    : "";
+  return `${payload.message || "Backend URL tracker saved."}${emailNotice}`;
 }
 
 async function refreshSyncedTrackerHistories() {
@@ -2759,13 +2803,13 @@ function renderProviders(providers) {
         : "This is not below the visible average price.";
     providerSavingsNode.classList.toggle("is-muted", !(provider.savingsVsAverage > 0));
     card.querySelector(".provider-deal-reason").textContent = provider.isPersonalBest
-      ? `Best deal for YOU: ${provider.dealReason}`
+      ? `Best modeled option: ${provider.dealReason}`
       : provider.dealReason;
 
     const metaNode = card.querySelector(".provider-meta");
     const metaValues = [
       `Source status ${provider.status}`,
-      ...(provider.isPersonalBest ? ["Best deal for YOU"] : []),
+      ...(provider.isPersonalBest ? ["Best modeled option"] : []),
       ...(provider.lastConfidence ? [getConfidenceMeta(provider.lastConfidence).label] : []),
       ...(provider.sourceUrl ? [`Source ${getHostname(provider.sourceUrl)}`] : []),
       ...(localMatch ? [`ZIP match - ${localMatch.areaLabel}`] : []),
@@ -3256,6 +3300,10 @@ function attachEvents() {
     void createHeroTracker();
   });
 
+  heroTargetPriceInput.addEventListener("input", updateTrackerDeltaText);
+  customCurrentPriceInput.addEventListener("input", updateTrackerDeltaText);
+  targetPriceInput.addEventListener("input", updateTrackerDeltaText);
+
   jumpToSearchBtn.addEventListener("click", () => {
     heroUrlInput.focus();
   });
@@ -3322,6 +3370,7 @@ function init() {
   zipCodeInput.value = state.zipCode;
   attachEvents();
   renderApp();
+  updateTrackerDeltaText();
   void refreshSyncedTrackerHistories();
   if (state.zipCode) {
     void applyZipMatch();
