@@ -1,0 +1,8 @@
+.git/
+.netlify/
+node_modules/
+preview/
+app-desktop.png
+app-mobile.png
+final-feature-check-desktop.png
+Thumbs.db
