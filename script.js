@@ -2215,6 +2215,49 @@ function buildPersonalDealReason(provider) {
   return `${reasonParts.join("; ")}. ${averageText}`;
 }
 
+function buildBeforeAfterSummary(provider, chosen) {
+  const originalPrice = provider.regularPrice;
+  const currentPrice = provider.currentPrice;
+  const finalPrice = chosen.finalPrice;
+  const discounts = [];
+  const saleDiscount = Math.max(0, originalPrice - currentPrice);
+
+  if (saleDiscount > 0) {
+    discounts.push({
+      label: "Visible sale markdown",
+      amount: saleDiscount
+    });
+  }
+
+  if (chosen.membership.key) {
+    discounts.push({
+      label: `${formatEligibilityLabel(chosen.membership.key)} discount`,
+      amount: currentPrice * chosen.membership.value
+    });
+  }
+
+  if (chosen.coupon) {
+    const priceBeforeCoupon = chosen.membership.key
+      ? currentPrice * (1 - chosen.membership.value)
+      : currentPrice;
+    discounts.push({
+      label: chosen.coupon.label,
+      amount: Math.max(0, priceBeforeCoupon - finalPrice)
+    });
+  }
+
+  const filteredDiscounts = discounts.filter((discount) => discount.amount > 0.004);
+
+  return {
+    originalPrice,
+    finalPrice,
+    totalSavings: Math.max(0, originalPrice - finalPrice),
+    discounts: filteredDiscounts.length
+      ? filteredDiscounts
+      : [{ label: "No extra discount modeled", amount: 0 }]
+  };
+}
+
 function annotateProviderInsights(providers) {
   const averageFinalPrice = getAverageFinalPrice(providers);
   const personalBest = getPersonalBestProvider(providers);
@@ -2240,6 +2283,7 @@ function getProviderComparison(provider, item) {
   const chosen = chooseBestScenario(provider);
   const savings = provider.regularPrice - chosen.finalPrice;
   const currentMarkdown = provider.currentPrice - chosen.finalPrice;
+  const beforeAfter = buildBeforeAfterSummary(provider, chosen);
   const historyLow = Math.min(...provider.history.map((point) => point.price));
   const historyHigh = Math.max(...provider.history.map((point) => point.price));
   const aprOffer = getActiveAprOffer(provider);
@@ -2258,6 +2302,7 @@ function getProviderComparison(provider, item) {
     coupon: chosen.coupon,
     savings,
     currentMarkdown,
+    beforeAfter,
     stackNote: chosen.stackNote,
     historyLow,
     historyHigh,
@@ -2581,6 +2626,29 @@ function buildConfidenceBadge(confidence) {
   return badge;
 }
 
+function renderBeforeAfterPanel(card, provider) {
+  const summary = provider.beforeAfter;
+  card.querySelector(".before-after-total").textContent = summary.totalSavings > 0
+    ? `Save ${formatCurrency(summary.totalSavings, provider.billing)}`
+    : "No modeled savings";
+  card.querySelector(".before-price").textContent = formatCurrency(summary.originalPrice, provider.billing);
+  card.querySelector(".after-price").textContent = formatCurrency(summary.finalPrice, provider.billing);
+
+  const list = card.querySelector(".discount-list");
+  list.innerHTML = "";
+  summary.discounts.forEach((discount) => {
+    const item = document.createElement("li");
+    const label = document.createElement("span");
+    label.textContent = discount.label;
+    const amount = document.createElement("strong");
+    amount.textContent = discount.amount > 0
+      ? `-${formatCurrency(discount.amount, provider.billing)}`
+      : formatCurrency(0, provider.billing);
+    item.append(label, amount);
+    list.appendChild(item);
+  });
+}
+
 function renderSelectedItem(item) {
   if (!item) {
     selectedTitle.textContent = "Select a tracked item";
@@ -2674,6 +2742,7 @@ function renderProviders(providers) {
     card.querySelector(".provider-regular").textContent = formatCurrency(provider.regularPrice, provider.billing);
     card.querySelector(".provider-current").textContent = formatCurrency(provider.currentPrice, provider.billing);
     card.querySelector(".provider-final").textContent = formatCurrency(provider.finalPrice, provider.billing);
+    renderBeforeAfterPanel(card, provider);
     card.querySelector(".provider-breakdown").textContent = provider.stackNote;
     const confidenceNode = card.querySelector(".provider-confidence");
     if (provider.lastConfidence) {
