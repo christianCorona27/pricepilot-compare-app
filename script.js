@@ -1971,6 +1971,31 @@ function getMembershipOptions(provider) {
   return options;
 }
 
+function formatEligibilityLabel(key) {
+  const labels = {
+    student: "Student",
+    senior: "Senior",
+    service: "Service member"
+  };
+
+  return labels[key] || "Eligibility";
+}
+
+function getSelectedEligibilityLabels() {
+  const labels = [];
+  if (state.profile.student) {
+    labels.push("student");
+  }
+  if (state.profile.senior) {
+    labels.push("senior");
+  }
+  if (state.profile.service) {
+    labels.push("service member");
+  }
+
+  return labels;
+}
+
 function chooseBestScenario(provider) {
   const membershipOptions = [{ key: null, value: 0, requirements: [] }, ...getMembershipOptions(provider)];
   const coupons = state.applyCoupons ? provider.coupons : [];
@@ -1982,7 +2007,7 @@ function chooseBestScenario(provider) {
       finalPrice: membershipPrice,
       membership,
       coupon: null,
-      stackNote: membership.key ? `${membership.key} discount applied` : "No extra discount applied"
+      stackNote: membership.key ? `${formatEligibilityLabel(membership.key)} discount applied` : "No extra discount applied"
     });
 
     coupons.forEach((coupon) => {
@@ -2000,13 +2025,82 @@ function chooseBestScenario(provider) {
           finalPrice: stackedPrice,
           membership,
           coupon,
-          stackNote: `${membership.key} discount + ${coupon.label}`
+          stackNote: `${formatEligibilityLabel(membership.key)} discount + ${coupon.label}`
         });
       }
     });
   });
 
   return scenarios.reduce((best, current) => (current.finalPrice < best.finalPrice ? current : best));
+}
+
+function getPersonalBestProvider(providers) {
+  if (!providers.length) {
+    return null;
+  }
+
+  return providers.reduce((best, current) => (current.finalPrice < best.finalPrice ? current : best));
+}
+
+function getAverageFinalPrice(providers) {
+  const prices = providers
+    .map((provider) => provider.finalPrice)
+    .filter((price) => Number.isFinite(price));
+
+  if (prices.length < 2) {
+    return null;
+  }
+
+  return prices.reduce((total, price) => total + price, 0) / prices.length;
+}
+
+function buildPersonalDealReason(provider) {
+  const reasonParts = [];
+
+  if (provider.membership.key) {
+    reasonParts.push(`${formatEligibilityLabel(provider.membership.key)} eligibility takes ${formatPercent(provider.membership.value)} off`);
+  }
+  if (provider.coupon) {
+    reasonParts.push(`${provider.coupon.label} is applied${provider.coupon.combinable ? " and stackable" : ""}`);
+  }
+  if (!reasonParts.length) {
+    const selected = getSelectedEligibilityLabels();
+    reasonParts.push(selected.length
+      ? `No selected ${selected.join(", ")} discount applies here`
+      : "No eligibility discounts selected");
+  }
+
+  let averageText = "Average savings need at least two visible sources.";
+  if (provider.savingsVsAverage > 0) {
+    averageText = `It is ${formatCurrency(provider.savingsVsAverage, provider.billing)} below the visible average.`;
+  } else if (provider.averageFinalPrice !== null && provider.isPersonalBest) {
+    averageText = "It is the lowest visible final price after the current settings.";
+  } else if (provider.averageFinalPrice !== null) {
+    averageText = "It is above the visible average after the current settings.";
+  }
+
+  return `${reasonParts.join("; ")}. ${averageText}`;
+}
+
+function annotateProviderInsights(providers) {
+  const averageFinalPrice = getAverageFinalPrice(providers);
+  const personalBest = getPersonalBestProvider(providers);
+
+  return providers.map((provider) => {
+    const savingsVsAverage = averageFinalPrice === null ? null : averageFinalPrice - provider.finalPrice;
+    const isPersonalBest = Boolean(personalBest && provider.name === personalBest.name && provider.finalPrice === personalBest.finalPrice);
+    const enriched = {
+      ...provider,
+      averageFinalPrice,
+      savingsVsAverage,
+      isPersonalBest
+    };
+
+    return {
+      ...enriched,
+      dealReason: buildPersonalDealReason(enriched)
+    };
+  });
 }
 
 function getProviderComparison(provider, item) {
@@ -2046,7 +2140,7 @@ function getProviderComparison(provider, item) {
 
 function getVisibleProviderComparisons(item) {
   const localKind = getLocalKindForItem(item);
-  return item.providers
+  const providers = item.providers
     .filter((provider) => state.providerVisibility[provider.name] !== false)
     .map((provider) => getProviderComparison(provider, item))
     .sort((a, b) => {
@@ -2060,6 +2154,8 @@ function getVisibleProviderComparisons(item) {
 
       return a.finalPrice - b.finalPrice || b.savings - a.savings;
     });
+
+  return annotateProviderInsights(providers);
 }
 
 function getFilteredItems() {
@@ -2189,7 +2285,7 @@ function renderBrowseControls(filteredItems) {
 }
 
 function buildCatalogCard(item) {
-  const best = item.providerComparisons[0];
+  const best = getPersonalBestProvider(item.providerComparisons) || item.providerComparisons[0];
   const dataMode = getItemDataMode(item);
   const refreshFailed = isItemRefreshFailed(item);
   const card = catalogCardTemplate.content.firstElementChild.cloneNode(true);
@@ -2208,7 +2304,16 @@ function buildCatalogCard(item) {
   card.querySelector(".catalog-best").textContent = formatCurrency(best.finalPrice, best.billing);
   card.querySelector(".catalog-regular").textContent = `Regular ${formatCurrency(best.regularPrice, best.billing)}`;
   card.querySelector(".catalog-note").textContent = `${best.name} - ${best.stackNote}`;
+  const averageNode = card.querySelector(".catalog-average");
+  averageNode.textContent = best.savingsVsAverage > 0
+    ? `You save ${formatCurrency(best.savingsVsAverage, best.billing)} vs average price`
+    : best.averageFinalPrice === null
+      ? "Average needs 2+ visible sources"
+      : "At the visible average price";
+  const personalBadge = card.querySelector(".catalog-personal-best");
+  personalBadge.hidden = !best.isPersonalBest;
   card.querySelector(".catalog-pill").textContent = `Save ${formatCurrency(best.savings, best.billing)}`;
+  card.querySelector(".catalog-reason").textContent = best.dealReason;
   card.querySelector(".catalog-count").textContent = `${item.providerComparisons.length} providers`;
 
   const metaNode = card.querySelector(".catalog-meta");
@@ -2405,6 +2510,7 @@ function renderProviders(providers) {
 
   providers.forEach((provider, index) => {
     const card = providerCardTemplate.content.firstElementChild.cloneNode(true);
+    card.classList.toggle("is-personal-best", provider.isPersonalBest);
     const localMatch = getZipMatch(provider.name, getLocalKindForItem({ category: provider.category }));
     const providerStatusNode = card.querySelector(".provider-status");
     const providerDataBadgeClass = provider.refreshFailed
@@ -2422,10 +2528,21 @@ function renderProviders(providers) {
     card.querySelector(".provider-current").textContent = formatCurrency(provider.currentPrice, provider.billing);
     card.querySelector(".provider-final").textContent = formatCurrency(provider.finalPrice, provider.billing);
     card.querySelector(".provider-breakdown").textContent = provider.stackNote;
+    const providerSavingsNode = card.querySelector(".provider-savings-line");
+    providerSavingsNode.textContent = provider.savingsVsAverage > 0
+      ? `You save ${formatCurrency(provider.savingsVsAverage, provider.billing)} vs average price`
+      : provider.averageFinalPrice === null
+        ? "Average comparison needs at least two visible sources."
+        : "This is not below the visible average price.";
+    providerSavingsNode.classList.toggle("is-muted", !(provider.savingsVsAverage > 0));
+    card.querySelector(".provider-deal-reason").textContent = provider.isPersonalBest
+      ? `Best deal for YOU: ${provider.dealReason}`
+      : provider.dealReason;
 
     const metaNode = card.querySelector(".provider-meta");
     const metaValues = [
       `Source status ${provider.status}`,
+      ...(provider.isPersonalBest ? ["Best deal for YOU"] : []),
       ...(provider.sourceUrl ? [`Source ${getHostname(provider.sourceUrl)}`] : []),
       ...(localMatch ? [`ZIP match - ${localMatch.areaLabel}`] : []),
       ...(provider.aprOffer ? [`Best APR ${provider.aprOffer.apr}% - ${provider.aprOffer.label}`] : []),
