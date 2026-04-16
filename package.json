@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node -e \"console.log('SmartSave static build complete')\"",
+    "build": "node scripts/build.mjs",
     "dev": "npx netlify dev"
   },
   "dependencies": {

@@ -3,4 +3,5 @@ app-mobile.png
 Thumbs.db
 node_modules/
 .netlify/
+dist/
 final-feature-check-desktop.png
