@@ -26,6 +26,43 @@
             SmartSave now focuses on one real workflow: read a public product page, confirm the extracted price,
             save a target price, and let the Netlify backend re-check it on a schedule for email alerts.
           </p>
+          <section class="hero-url-card" aria-label="Paste a product URL to start tracking">
+            <label class="hero-url-label" for="heroUrlInput">Product URL</label>
+            <div class="hero-url-row">
+              <input id="heroUrlInput" type="url" placeholder="https://store.example.com/product" />
+              <button class="solid-button hero-url-button" id="heroFindPriceBtn" type="button">
+                Find My Best Price
+              </button>
+            </div>
+            <p class="hero-preview-status" id="heroPreviewStatus">
+              Paste a public product page. SmartSave will extract the product details it can read.
+            </p>
+            <div class="hero-preview-panel" id="heroPreviewPanel" hidden>
+              <div class="hero-preview-media">
+                <img id="heroPreviewImage" alt="" loading="lazy" />
+                <span id="heroPreviewFallback">SS</span>
+              </div>
+              <div class="hero-preview-content">
+                <span class="data-badge status-live">Live Tracker</span>
+                <h2 id="heroPreviewTitle">Product title</h2>
+                <p id="heroPreviewMeta" class="history-note">Source details will appear here.</p>
+                <strong id="heroPreviewPrice" class="hero-preview-price">--</strong>
+                <div class="hero-create-grid">
+                  <label>
+                    Target price
+                    <input id="heroTargetPriceInput" type="number" min="0" step="0.01" placeholder="149.99" />
+                  </label>
+                  <label>
+                    Email for alert
+                    <input id="heroEmailInput" type="email" placeholder="you@example.com" />
+                  </label>
+                </div>
+                <button class="solid-button hero-create-button" id="heroCreateTrackerBtn" type="button">
+                  Create Tracker
+                </button>
+              </div>
+            </div>
+          </section>
           <div class="hero-actions">
             <button class="solid-button" id="jumpToSearchBtn" type="button">Track a URL</button>
             <button class="ghost-button" id="resetDataBtn" type="button">Reset demo data</button>

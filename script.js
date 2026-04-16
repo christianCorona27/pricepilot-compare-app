@@ -1181,6 +1181,18 @@ const studentToggle = document.querySelector("#studentToggle");
 const seniorToggle = document.querySelector("#seniorToggle");
 const serviceToggle = document.querySelector("#serviceToggle");
 const couponToggle = document.querySelector("#couponToggle");
+const heroUrlInput = document.querySelector("#heroUrlInput");
+const heroFindPriceBtn = document.querySelector("#heroFindPriceBtn");
+const heroPreviewStatus = document.querySelector("#heroPreviewStatus");
+const heroPreviewPanel = document.querySelector("#heroPreviewPanel");
+const heroPreviewImage = document.querySelector("#heroPreviewImage");
+const heroPreviewFallback = document.querySelector("#heroPreviewFallback");
+const heroPreviewTitle = document.querySelector("#heroPreviewTitle");
+const heroPreviewMeta = document.querySelector("#heroPreviewMeta");
+const heroPreviewPrice = document.querySelector("#heroPreviewPrice");
+const heroTargetPriceInput = document.querySelector("#heroTargetPriceInput");
+const heroEmailInput = document.querySelector("#heroEmailInput");
+const heroCreateTrackerBtn = document.querySelector("#heroCreateTrackerBtn");
 const jumpToSearchBtn = document.querySelector("#jumpToSearchBtn");
 const resetDataBtn = document.querySelector("#resetDataBtn");
 const targetPriceInput = document.querySelector("#targetPriceInput");
@@ -1405,19 +1417,106 @@ function clearZipMatch() {
   renderApp();
 }
 
-function applyPreviewToCustomForm(preview) {
+function applyPreviewToCustomForm(preview, overwrite = false) {
   state.customPreview = preview;
-  if (preview.title && !customNameInput.value.trim()) {
+  if (preview.url && (overwrite || !customUrlInput.value.trim())) {
+    customUrlInput.value = preview.url;
+  }
+  if (preview.title && (overwrite || !customNameInput.value.trim())) {
     customNameInput.value = preview.title;
   }
-  if (preview.price && !customCurrentPriceInput.value.trim()) {
+  if (preview.price && (overwrite || !customCurrentPriceInput.value.trim())) {
     customCurrentPriceInput.value = preview.price;
   }
-  if (preview.price && !customRegularPriceInput.value.trim()) {
+  if (preview.price && (overwrite || !customRegularPriceInput.value.trim())) {
     customRegularPriceInput.value = preview.price;
   }
-  if (!customCategoryInput.value.trim()) {
+  if (overwrite || !customCategoryInput.value.trim()) {
     customCategoryInput.value = preview.hostname ? `Web - ${preview.hostname.replace(/^www\./, "")}` : "Web product";
+  }
+}
+
+function setHeroPreviewStatus(message, isError = false) {
+  heroPreviewStatus.textContent = message;
+  heroPreviewStatus.classList.toggle("is-error", isError);
+}
+
+function renderHeroPreview(preview) {
+  heroPreviewPanel.hidden = false;
+  heroPreviewTitle.textContent = preview.title || "Untitled product page";
+  heroPreviewMeta.textContent = `${preview.hostname || "Unknown source"} - confidence ${preview.confidence || "low"}`;
+  heroPreviewPrice.textContent = preview.price ? formatCurrency(preview.price) : "Price not found";
+  setImageWithFallback(heroPreviewImage, heroPreviewFallback, preview.image, preview.title || preview.hostname || "SmartSave");
+
+  if (preview.price && !heroTargetPriceInput.value.trim()) {
+    heroTargetPriceInput.value = Math.max(1, preview.price * 0.85).toFixed(2);
+  }
+}
+
+async function readHeroUrl() {
+  const url = heroUrlInput.value.trim();
+  if (!url) {
+    setHeroPreviewStatus("Paste a public product URL first.", true);
+    return null;
+  }
+  if (!hasBackendRuntime()) {
+    setHeroPreviewStatus("URL reading needs the Netlify backend. Use the deployed site or Netlify dev.", true);
+    return null;
+  }
+
+  customUrlInput.value = url;
+  setHeroPreviewStatus("Reading public product page metadata...");
+  heroFindPriceBtn.disabled = true;
+
+  try {
+    const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
+    const payload = await readJsonSafe(response);
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error || "SmartSave could not read that URL.");
+    }
+    applyPreviewToCustomForm(payload, true);
+    renderHeroPreview(payload);
+    setHeroPreviewStatus(payload.message || "Product details found. Add a target price and email to create the tracker.");
+    return payload;
+  } catch (error) {
+    setHeroPreviewStatus(error.message || "Unable to read that URL. Try another public product page.", true);
+    return null;
+  } finally {
+    heroFindPriceBtn.disabled = false;
+  }
+}
+
+async function createHeroTracker() {
+  const url = heroUrlInput.value.trim();
+  if (!state.customPreview || state.customPreview.url !== url) {
+    const preview = await readHeroUrl();
+    if (!preview) {
+      return;
+    }
+  }
+
+  customUrlInput.value = url || state.customPreview.url || customUrlInput.value;
+  targetPriceInput.value = heroTargetPriceInput.value;
+  emailAlertInput.value = heroEmailInput.value;
+
+  if (!targetPriceInput.value.trim()) {
+    setHeroPreviewStatus("Enter a target price before creating the tracker.", true);
+    return;
+  }
+  if (!emailAlertInput.value.trim()) {
+    setHeroPreviewStatus("Enter an email address before creating the tracker.", true);
+    return;
+  }
+
+  heroCreateTrackerBtn.disabled = true;
+  setHeroPreviewStatus("Creating tracker...");
+  const saved = await addCustomTracker();
+  heroCreateTrackerBtn.disabled = false;
+
+  if (saved) {
+    setHeroPreviewStatus("Tracker created. It is saved below and synced with the backend when available.");
+    heroTargetPriceInput.value = "";
+    heroEmailInput.value = "";
   }
 }
 
@@ -1572,8 +1671,10 @@ async function addCustomTracker() {
     emailAlertInput.value = "";
     customSourceStatus.textContent = `Saved ${tracker.name}. ${backendMessage}`;
     renderApp();
+    return true;
   } catch (error) {
     customSourceStatus.textContent = error.message || "Unable to add this tracker.";
+    return false;
   }
 }
 
@@ -2713,9 +2814,23 @@ function attachEvents() {
     renderApp();
   });
 
+  heroFindPriceBtn.addEventListener("click", () => {
+    void readHeroUrl();
+  });
+
+  heroUrlInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void readHeroUrl();
+    }
+  });
+
+  heroCreateTrackerBtn.addEventListener("click", () => {
+    void createHeroTracker();
+  });
+
   jumpToSearchBtn.addEventListener("click", () => {
-    document.querySelector("#searchSection").scrollIntoView({ behavior: "smooth", block: "start" });
-    searchInput.focus();
+    heroUrlInput.focus();
   });
 
   enableNotificationsBtn.addEventListener("click", requestBrowserNotifications);
