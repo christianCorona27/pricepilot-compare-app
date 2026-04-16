@@ -184,3 +184,58 @@ That runs the site through `netlify dev`, which enables the local serverless rou
 - Expand the ZIP directory beyond the seeded Central Texas provider set
 - Add ZIP-aware home listing, insurance, and financing comparisons
 - Add user accounts so alerts and ZIP preferences sync across devices
+
+## Recommended Features
+
+These are the strongest next additions based on the app's current direction.
+
+### High Impact
+
+- Live store and lender feeds so the app compares real-time prices instead of seeded snapshots
+- Price-drop confidence labels that show whether a deal looks unusually strong compared to recent history
+- Multi-item watchlists for planning a whole purchase, such as a grocery list, tech setup, or moving checklist
+- Shareable comparison links so users can send a saved product, car, or APR comparison to family members or buyers
+
+### Shopping Intelligence
+
+- Total cost breakdowns that include taxes, shipping, activation fees, dealer fees, or estimated closing costs
+- A best-value score that balances final price, discount quality, provider reputation, and requirements complexity
+- Deal stacking guidance that explains which coupon or profile discount was chosen and why it beat the alternatives
+- Category-specific comparison modes for groceries, household essentials, electronics, internet plans, cars, and mortgages
+
+### Cars
+
+- Out-the-door vehicle pricing with estimated taxes, doc fees, add-ons, and registration costs
+- Trade-in value and down-payment modeling
+- Loan term comparisons that show payment, total interest, and total paid instead of APR alone
+- Dealer negotiation mode that highlights the strongest competing local offer to use as leverage
+
+### Homes And APR
+
+- Mortgage comparison by monthly payment, APR, total interest, and cash-to-close
+- Adjustable-rate versus fixed-rate comparison tools
+- Property tax, homeowners insurance, HOA, and PMI estimates for a more realistic monthly payment
+- Refinance comparison mode for users comparing lenders on an existing loan
+
+### Alerts And Automation
+
+- Scheduled backend price refresh jobs for watched items
+- Escalating alerts such as browser first, then email, then SMS when a deal becomes urgent
+- Smart reorder rules for perishables and household items based on cadence, quantity, and sale thresholds
+- Budget alerts that warn when the final price goes above a preferred spending limit
+
+### Accounts
+
+- Sign-in so users can keep alerts, ZIP preferences, watched items, and comparison history across devices
+- Saved profiles for student, senior, military, family, renter, or homeowner scenarios
+- Saved households so one person can manage recurring shopping and another can receive alerts
+
+## Suggested Build Order
+
+If you want to keep momentum and get the biggest payoff first, this is the order I would recommend:
+
+1. Deploy on Netlify and turn on the backend routes
+2. Add live price refresh sources for a small set of providers first
+3. Add user accounts so alerts and ZIP settings persist across devices
+4. Add total-cost calculators for cars and mortgages
+5. Expand local dealership and lender coverage by ZIP and state
