@@ -15,7 +15,8 @@ export interface PriceTracker {
   currency: string;
   targetPrice: number;
   email: string;
-  lastPrice: number;
+  currentPrice: number;
+  lastPrice?: number;
   lastConfidence: "high" | "medium" | "low";
   status: "tracking" | "manual-start" | "price-missing" | "source-error" | "alerted";
   createdAt: string;
@@ -23,6 +24,8 @@ export interface PriceTracker {
   lastCheckedAt: string;
   lastAlertedAt?: string | null;
   lastAlertedPrice?: number | null;
+  lastError?: string | null;
+  failureCount?: number;
   priceHistory: PricePoint[];
 }
 
@@ -65,8 +68,19 @@ function formatCurrency(value: number, currency = "USD") {
   }).format(value);
 }
 
+export function getTrackerCurrentPrice(tracker: PriceTracker) {
+  const currentPrice = Number(tracker.currentPrice);
+  if (Number.isFinite(currentPrice)) {
+    return currentPrice;
+  }
+
+  // Legacy trackers created before the schema used lastPrice instead.
+  const legacyPrice = Number(tracker.lastPrice);
+  return Number.isFinite(legacyPrice) ? legacyPrice : 0;
+}
+
 function buildAlertMessage(tracker: PriceTracker) {
-  const priceText = formatCurrency(tracker.lastPrice, tracker.currency);
+  const priceText = formatCurrency(getTrackerCurrentPrice(tracker), tracker.currency);
   const targetText = formatCurrency(tracker.targetPrice, tracker.currency);
   const safeTitle = tracker.title.replace(/[<>]/g, "");
   const safeUrl = tracker.url.replace(/"/g, "&quot;");
@@ -87,20 +101,25 @@ export async function sendPriceAlertEmail(tracker: PriceTracker) {
   }
 
   const message = buildAlertMessage(tracker);
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: [tracker.email],
-      subject: message.subject,
-      html: message.html,
-      text: message.text
-    })
-  });
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [tracker.email],
+        subject: message.subject,
+        html: message.html,
+        text: message.text
+      })
+    });
 
-  return response.ok;
+    return response.ok;
+  } catch (error) {
+    console.warn(`SmartSave email alert failed for tracker ${tracker.id}:`, error);
+    return false;
+  }
 }

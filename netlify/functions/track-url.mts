@@ -5,6 +5,7 @@ import {
   getPriceTrackerStore,
   isValidEmail,
   jsonResponse,
+  getTrackerCurrentPrice,
   sendPriceAlertEmail,
   type PriceTracker
 } from "./lib/alerts.mts";
@@ -70,7 +71,7 @@ export default async (req: Request) => {
     currency: page.currency || "USD",
     targetPrice,
     email,
-    lastPrice: currentPrice,
+    currentPrice,
     lastConfidence: page.confidence,
     status: "tracking",
     createdAt: now,
@@ -78,15 +79,17 @@ export default async (req: Request) => {
     lastCheckedAt: now,
     lastAlertedAt: null,
     lastAlertedPrice: null,
+    lastError: null,
+    failureCount: 0,
     priceHistory: [{ date: now, price: currentPrice }]
   };
 
-  if (tracker.lastPrice <= tracker.targetPrice) {
+  if (getTrackerCurrentPrice(tracker) <= tracker.targetPrice) {
     const emailSent = await sendPriceAlertEmail(tracker);
     if (emailSent) {
       tracker.status = "alerted";
       tracker.lastAlertedAt = now;
-      tracker.lastAlertedPrice = tracker.lastPrice;
+      tracker.lastAlertedPrice = tracker.currentPrice;
     }
   }
 
@@ -97,9 +100,9 @@ export default async (req: Request) => {
     ok: true,
     trackerId: id,
     tracker,
-    immediateMatch: tracker.lastPrice <= tracker.targetPrice,
+    immediateMatch: getTrackerCurrentPrice(tracker) <= tracker.targetPrice,
     emailConfigured: Boolean(Netlify.env.get("RESEND_API_KEY") && Netlify.env.get("ALERT_FROM_EMAIL")),
-    message: tracker.lastPrice <= tracker.targetPrice
+    message: getTrackerCurrentPrice(tracker) <= tracker.targetPrice
       ? "Tracker saved. The current price already meets the target, so SmartSave attempted an immediate email alert."
       : "Tracker saved. SmartSave will re-check this public product page on the scheduled backend sweep."
   });
