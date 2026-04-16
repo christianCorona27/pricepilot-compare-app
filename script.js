@@ -1190,6 +1190,7 @@ const heroPreviewFallback = document.querySelector("#heroPreviewFallback");
 const heroPreviewTitle = document.querySelector("#heroPreviewTitle");
 const heroPreviewMeta = document.querySelector("#heroPreviewMeta");
 const heroPreviewPrice = document.querySelector("#heroPreviewPrice");
+const heroConfidenceBadge = document.querySelector("#heroConfidenceBadge");
 const heroTargetPriceInput = document.querySelector("#heroTargetPriceInput");
 const heroEmailInput = document.querySelector("#heroEmailInput");
 const heroCreateTrackerBtn = document.querySelector("#heroCreateTrackerBtn");
@@ -1341,6 +1342,40 @@ async function readJsonSafe(response) {
   }
 }
 
+function getConfidenceMeta(confidence = "low") {
+  const normalized = ["high", "medium", "low"].includes(confidence) ? confidence : "low";
+  const meta = {
+    high: {
+      label: "High confidence",
+      detail: "Green check: price came from structured product metadata.",
+      className: "confidence-high",
+      shortLabel: "High confidence - check"
+    },
+    medium: {
+      label: "Medium confidence",
+      detail: "Warning: price candidate was found, but confirm it before tracking.",
+      className: "confidence-medium",
+      shortLabel: "Medium confidence - warning"
+    },
+    low: {
+      label: "Low confidence",
+      detail: "Manual confirmation required: SmartSave could not verify a reliable price.",
+      className: "confidence-low",
+      shortLabel: "Low confidence - manual confirmation required"
+    }
+  };
+
+  return meta[normalized];
+}
+
+function applyConfidenceBadge(node, confidence) {
+  const meta = getConfidenceMeta(confidence);
+  node.className = `confidence-badge ${meta.className}`;
+  node.textContent = meta.shortLabel;
+  node.title = meta.detail;
+  node.setAttribute("aria-label", meta.detail);
+}
+
 function getLocalKindForItem(item) {
   if (item.category === "Vehicle") {
     return "vehicle";
@@ -1389,6 +1424,7 @@ function applyBackendTrackerToItem(item, tracker) {
   const currentPrice = Number(tracker.currentPrice);
   const history = normalizeTrackerHistory(tracker.priceHistory);
   const refreshFailed = ["source-error", "price-missing"].includes(tracker.status);
+  const confidence = tracker.lastConfidence || provider.lastConfidence || "low";
 
   item.name = cleanManualText(tracker.title, item.name);
   item.imageUrl = cleanManualText(tracker.image, item.imageUrl);
@@ -1397,13 +1433,17 @@ function applyBackendTrackerToItem(item, tracker) {
   provider.name = cleanManualText(tracker.hostname, provider.name);
   provider.sourceUrl = tracker.url || provider.sourceUrl;
   provider.status = refreshFailed ? "Refresh failed" : "Live URL source";
+  provider.lastConfidence = confidence;
   provider.lastChecked = tracker.lastCheckedAt || tracker.updatedAt || provider.lastChecked;
   provider.currentPrice = Number.isFinite(currentPrice) ? currentPrice : provider.currentPrice;
   provider.regularPrice = Math.max(provider.regularPrice || 0, provider.currentPrice || 0);
   provider.history = history.length ? history : provider.history;
   provider.dealRequirements = refreshFailed && tracker.lastError
     ? Array.from(new Set([`Last refresh failed: ${tracker.lastError}`, ...(provider.dealRequirements || [])]))
-    : provider.dealRequirements;
+    : Array.from(new Set([
+        ...(confidence === "low" ? [getConfidenceMeta(confidence).detail] : []),
+        ...(provider.dealRequirements || [])
+      ]));
 
   return true;
 }
@@ -1486,8 +1526,10 @@ function setHeroPreviewStatus(message, isError = false) {
 function renderHeroPreview(preview) {
   heroPreviewPanel.hidden = false;
   heroPreviewTitle.textContent = preview.title || "Untitled product page";
-  heroPreviewMeta.textContent = `${preview.hostname || "Unknown source"} - confidence ${preview.confidence || "low"}`;
+  const confidence = getConfidenceMeta(preview.confidence);
+  heroPreviewMeta.textContent = `${preview.hostname || "Unknown source"} - ${confidence.detail}`;
   heroPreviewPrice.textContent = preview.price ? formatCurrency(preview.price) : "Price not found";
+  applyConfidenceBadge(heroConfidenceBadge, preview.confidence);
   setImageWithFallback(heroPreviewImage, heroPreviewFallback, preview.image, preview.title || preview.hostname || "SmartSave");
 
   if (preview.price && !heroTargetPriceInput.value.trim()) {
@@ -1582,7 +1624,7 @@ async function readCustomUrl() {
       throw new Error(payload.error || "SmartSave could not read that URL.");
     }
     applyPreviewToCustomForm(payload);
-    customSourceStatus.textContent = payload.message || "Metadata loaded. Confirm the price, set a target, and save the tracker.";
+    customSourceStatus.textContent = `${payload.message || "Metadata loaded. Confirm the price, set a target, and save the tracker."} ${getConfidenceMeta(payload.confidence).detail}`;
   } catch (error) {
     customSourceStatus.textContent = error.message || "Unable to read that URL. Try another public product page.";
   }
@@ -1621,6 +1663,8 @@ function buildCustomTracker() {
     : [];
   const today = getTodayStamp();
   const id = `custom-${slugify(name)}-${Date.now()}`;
+  const confidence = state.customPreview?.confidence || "low";
+  const confidenceMeta = getConfidenceMeta(confidence);
 
   return {
     id,
@@ -1640,6 +1684,7 @@ function buildCustomTracker() {
       regularPrice: regularPrice ?? currentPrice,
       currentPrice,
       status: "Live URL source",
+      lastConfidence: confidence,
       lastChecked: today,
       sourceUrl: url,
       discounts: {
@@ -1649,6 +1694,7 @@ function buildCustomTracker() {
       },
       coupons,
       dealRequirements: [
+        confidenceMeta.detail,
         `Open ${providerName} to confirm stock, shipping, tax, and checkout terms before purchase.`,
         ...requirements
       ],
@@ -2405,6 +2451,9 @@ function buildCatalogCard(item) {
 
   const metaNode = card.querySelector(".catalog-meta");
   metaNode.appendChild(buildDataBadge(item));
+  if (best.lastConfidence) {
+    metaNode.appendChild(buildConfidenceBadge(best.lastConfidence));
+  }
   if (refreshFailed) {
     metaNode.appendChild(buildRefreshFailedBadge());
   }
@@ -2526,6 +2575,12 @@ function buildRefreshFailedBadge() {
   return buildBadge("Refresh Failed", "data-badge status-failed");
 }
 
+function buildConfidenceBadge(confidence) {
+  const badge = document.createElement("span");
+  applyConfidenceBadge(badge, confidence);
+  return badge;
+}
+
 function renderSelectedItem(item) {
   if (!item) {
     selectedTitle.textContent = "Select a tracked item";
@@ -2549,6 +2604,10 @@ function renderSelectedItem(item) {
   setImageWithFallback(selectedImage, selectedImageFallback, item.imageUrl, item.name);
   selectedBadges.innerHTML = "";
   selectedBadges.appendChild(buildDataBadge(item));
+  const selectedConfidence = item.providerComparisons.find((provider) => provider.lastConfidence)?.lastConfidence;
+  if (selectedConfidence) {
+    selectedBadges.appendChild(buildConfidenceBadge(selectedConfidence));
+  }
   if (isItemRefreshFailed(item)) {
     selectedBadges.appendChild(buildRefreshFailedBadge());
   }
@@ -2616,6 +2675,13 @@ function renderProviders(providers) {
     card.querySelector(".provider-current").textContent = formatCurrency(provider.currentPrice, provider.billing);
     card.querySelector(".provider-final").textContent = formatCurrency(provider.finalPrice, provider.billing);
     card.querySelector(".provider-breakdown").textContent = provider.stackNote;
+    const confidenceNode = card.querySelector(".provider-confidence");
+    if (provider.lastConfidence) {
+      applyConfidenceBadge(confidenceNode, provider.lastConfidence);
+      confidenceNode.hidden = false;
+    } else {
+      confidenceNode.hidden = true;
+    }
     const providerSavingsNode = card.querySelector(".provider-savings-line");
     providerSavingsNode.textContent = provider.savingsVsAverage > 0
       ? `You save ${formatCurrency(provider.savingsVsAverage, provider.billing)} vs average price`
@@ -2631,6 +2697,7 @@ function renderProviders(providers) {
     const metaValues = [
       `Source status ${provider.status}`,
       ...(provider.isPersonalBest ? ["Best deal for YOU"] : []),
+      ...(provider.lastConfidence ? [getConfidenceMeta(provider.lastConfidence).label] : []),
       ...(provider.sourceUrl ? [`Source ${getHostname(provider.sourceUrl)}`] : []),
       ...(localMatch ? [`ZIP match - ${localMatch.areaLabel}`] : []),
       ...(provider.aprOffer ? [`Best APR ${provider.aprOffer.apr}% - ${provider.aprOffer.label}`] : []),

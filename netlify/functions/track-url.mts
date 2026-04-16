@@ -28,6 +28,7 @@ function publicTrackerPayload(tracker: PriceTracker) {
     currency: tracker.currency,
     targetPrice: tracker.targetPrice,
     currentPrice: getTrackerCurrentPrice(tracker),
+    lastConfidence: tracker.lastConfidence,
     status: tracker.status,
     updatedAt: tracker.updatedAt,
     lastCheckedAt: tracker.lastCheckedAt,
