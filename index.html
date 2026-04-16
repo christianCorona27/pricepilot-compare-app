@@ -298,6 +298,41 @@
             </label>
           </div>
 
+          <section class="browse-shell">
+            <div class="providers-head">
+              <div>
+                <p class="section-kicker">Browse</p>
+                <h3>Product and service sections</h3>
+              </div>
+              <p class="history-note">
+                Jump straight into product types and service types with category search and separate dropdowns.
+              </p>
+            </div>
+            <div class="browse-grid">
+              <label class="search-field search-field-wide">
+                <span>Search section names</span>
+                <input
+                  id="categorySearchInput"
+                  type="search"
+                  placeholder="Search categories like Grocery, Vehicle, Home APR, or Cloud Storage"
+                />
+              </label>
+              <label class="sort-field">
+                <span>Product type</span>
+                <select id="productCategorySelect">
+                  <option value="">All product types</option>
+                </select>
+              </label>
+              <label class="sort-field">
+                <span>Service type</span>
+                <select id="serviceCategorySelect">
+                  <option value="">All service types</option>
+                </select>
+              </label>
+            </div>
+            <div id="categorySummary" class="category-summary"></div>
+          </section>
+
           <section class="catalog-shell" aria-live="polite">
             <div class="list-head catalog-head">
               <span>Tracked item</span>

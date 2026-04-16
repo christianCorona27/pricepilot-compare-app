@@ -883,6 +883,9 @@ const state = {
   items: [],
   activeFilter: "all",
   searchTerm: "",
+  categorySearch: "",
+  selectedProductCategory: "",
+  selectedServiceCategory: "",
   sortBy: "final-asc",
   selectedId: null,
   applyCoupons: true,
@@ -901,6 +904,9 @@ const state = {
 };
 
 const searchInput = document.querySelector("#searchInput");
+const categorySearchInput = document.querySelector("#categorySearchInput");
+const productCategorySelect = document.querySelector("#productCategorySelect");
+const serviceCategorySelect = document.querySelector("#serviceCategorySelect");
 const sortSelect = document.querySelector("#sortSelect");
 const filterButtons = Array.from(document.querySelectorAll(".filter-chip"));
 const providerToggles = Array.from(document.querySelectorAll(".provider-toggle"));
@@ -933,6 +939,7 @@ const dataModeNote = document.querySelector("#dataModeNote");
 const alertStatusText = document.querySelector("#alertStatusText");
 const zipMatchStatus = document.querySelector("#zipMatchStatus");
 const zipMatchList = document.querySelector("#zipMatchList");
+const categorySummary = document.querySelector("#categorySummary");
 const watchlistItems = document.querySelector("#watchlistItems");
 const plannerGrid = document.querySelector("#plannerGrid");
 
@@ -1123,6 +1130,14 @@ async function syncWatchWithBackend(item, best, watch) {
 
 function getItemById(itemId) {
   return state.items.find((item) => item.id === itemId) || null;
+}
+
+function getCategoryOptions(type) {
+  return [...new Set(
+    state.items
+      .filter((item) => item.type === type)
+      .map((item) => item.category)
+  )].sort((a, b) => a.localeCompare(b));
 }
 
 function getActiveAprOffer(provider) {
@@ -1412,6 +1427,7 @@ function getVisibleProviderComparisons(item) {
 
 function getFilteredItems() {
   const search = state.searchTerm.trim().toLowerCase();
+  const categorySearch = state.categorySearch.trim().toLowerCase();
 
   return state.items
     .map((item) => {
@@ -1419,10 +1435,13 @@ function getFilteredItems() {
       const searchable = [item.name, item.category, item.matchMode, item.notes, ...item.keywords].join(" ").toLowerCase();
       const matchesFilter = state.activeFilter === "all" || item.type === state.activeFilter;
       const matchesSearch = !search || searchable.includes(search) || providers.some((provider) => provider.name.toLowerCase().includes(search));
+      const selectedCategory = item.type === "product" ? state.selectedProductCategory : state.selectedServiceCategory;
+      const matchesDropdown = !selectedCategory || item.category === selectedCategory;
+      const matchesCategorySearch = !categorySearch || item.category.toLowerCase().includes(categorySearch);
       return {
         ...item,
         providerComparisons: providers,
-        matches: matchesFilter && matchesSearch && providers.length > 0
+        matches: matchesFilter && matchesSearch && matchesDropdown && matchesCategorySearch && providers.length > 0
       };
     })
     .filter((item) => item.matches)
@@ -1479,6 +1498,96 @@ function updateSummary(filteredItems) {
   summaryNodes.historyValue.textContent = `${windowDays} days`;
   summaryNodes.historyDetail.textContent = `${formatDate(allDates[0])} to ${formatDate(allDates[allDates.length - 1])}`;
 }
+
+function renderBrowseControls(filteredItems) {
+  const productOptions = getCategoryOptions("product");
+  const serviceOptions = getCategoryOptions("service");
+
+  if (state.selectedProductCategory && !productOptions.includes(state.selectedProductCategory)) {
+    state.selectedProductCategory = "";
+  }
+  if (state.selectedServiceCategory && !serviceOptions.includes(state.selectedServiceCategory)) {
+    state.selectedServiceCategory = "";
+  }
+
+  productCategorySelect.innerHTML = '<option value="">All product types</option>';
+  productOptions.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    productCategorySelect.appendChild(option);
+  });
+  productCategorySelect.value = state.selectedProductCategory;
+
+  serviceCategorySelect.innerHTML = '<option value="">All service types</option>';
+  serviceOptions.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    serviceCategorySelect.appendChild(option);
+  });
+  serviceCategorySelect.value = state.selectedServiceCategory;
+  categorySearchInput.value = state.categorySearch;
+
+  const counts = filteredItems.reduce((summary, item) => {
+    const key = `${item.type}:${item.category}`;
+    summary[key] = (summary[key] || 0) + 1;
+    return summary;
+  }, {});
+
+  categorySummary.innerHTML = "";
+  const keys = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+  if (!keys.length) {
+    categorySummary.innerHTML = '<div class="empty-state">No sections match the current category filters yet.</div>';
+    return;
+  }
+
+  keys.forEach((key) => {
+    const [type, category] = key.split(":");
+    const pill = document.createElement("span");
+    pill.className = "meta-pill";
+    pill.textContent = `${type === "product" ? "Product" : "Service"} - ${category} (${counts[key]})`;
+    categorySummary.appendChild(pill);
+  });
+}
+
+function buildCatalogCard(item) {
+  const best = item.providerComparisons[0];
+  const card = catalogCardTemplate.content.firstElementChild.cloneNode(true);
+  card.classList.toggle("is-active", item.id === state.selectedId);
+  card.querySelector(".catalog-title").textContent = item.name;
+  card.querySelector(".catalog-type").textContent = item.type;
+  card.querySelector(".catalog-subtitle").textContent = `${item.category} - ${item.matchMode}`;
+  card.querySelector(".catalog-best").textContent = formatCurrency(best.finalPrice, best.billing);
+  card.querySelector(".catalog-regular").textContent = `Regular ${formatCurrency(best.regularPrice, best.billing)}`;
+  card.querySelector(".catalog-note").textContent = `${best.name} - ${best.stackNote}`;
+  card.querySelector(".catalog-pill").textContent = `Save ${formatCurrency(best.savings, best.billing)}`;
+  card.querySelector(".catalog-count").textContent = `${item.providerComparisons.length} providers`;
+
+  const metaNode = card.querySelector(".catalog-meta");
+  [item.matchMode, `Updated ${formatDate(best.lastChecked)}`].forEach((label) => {
+    const pill = document.createElement("span");
+    pill.className = "meta-pill";
+    pill.textContent = label;
+    metaNode.appendChild(pill);
+  });
+
+  const selectItem = () => {
+    state.selectedId = item.id;
+    renderApp();
+  };
+
+  card.addEventListener("click", selectItem);
+  card.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectItem();
+    }
+  });
+
+  return card;
+}
+
 function renderCatalog(filteredItems) {
   catalogList.innerHTML = "";
 
@@ -1490,46 +1599,61 @@ function renderCatalog(filteredItems) {
     return;
   }
 
-  const fragment = document.createDocumentFragment();
+  const grouped = filteredItems.reduce((sections, item) => {
+    if (!sections[item.type]) {
+      sections[item.type] = {};
+    }
+    if (!sections[item.type][item.category]) {
+      sections[item.type][item.category] = [];
+    }
+    sections[item.type][item.category].push(item);
+    return sections;
+  }, {});
 
-  filteredItems.forEach((item) => {
-    const best = item.providerComparisons[0];
-    const card = catalogCardTemplate.content.firstElementChild.cloneNode(true);
-    card.classList.toggle("is-active", item.id === state.selectedId);
-    card.querySelector(".catalog-title").textContent = item.name;
-    card.querySelector(".catalog-type").textContent = item.type;
-    card.querySelector(".catalog-subtitle").textContent = `${item.category} - ${item.matchMode}`;
-    card.querySelector(".catalog-best").textContent = formatCurrency(best.finalPrice, best.billing);
-    card.querySelector(".catalog-regular").textContent = `Regular ${formatCurrency(best.regularPrice, best.billing)}`;
-    card.querySelector(".catalog-note").textContent = `${best.name} - ${best.stackNote}`;
-    card.querySelector(".catalog-pill").textContent = `Save ${formatCurrency(best.savings, best.billing)}`;
-    card.querySelector(".catalog-count").textContent = `${item.providerComparisons.length} providers`;
+  ["product", "service"].forEach((type) => {
+    const categories = grouped[type];
+    if (!categories || !Object.keys(categories).length) {
+      return;
+    }
 
-    const metaNode = card.querySelector(".catalog-meta");
-    [item.matchMode, `Updated ${formatDate(best.lastChecked)}`].forEach((label) => {
-      const pill = document.createElement("span");
-      pill.className = "meta-pill";
-      pill.textContent = label;
-      metaNode.appendChild(pill);
+    const section = document.createElement("section");
+    section.className = "category-section";
+
+    const sectionHead = document.createElement("div");
+    sectionHead.className = "category-section-head";
+    sectionHead.innerHTML = `
+      <div>
+        <p class="section-kicker">${type === "product" ? "Products" : "Services"}</p>
+        <h3>${type === "product" ? "Product sections" : "Service sections"}</h3>
+      </div>
+      <span class="history-note">${Object.values(categories).flat().length} items visible</span>
+    `;
+    section.appendChild(sectionHead);
+
+    Object.keys(categories).sort((a, b) => a.localeCompare(b)).forEach((category) => {
+      const subsection = document.createElement("div");
+      subsection.className = "category-subsection";
+      subsection.innerHTML = `
+        <div class="category-section-head">
+          <div>
+            <h4>${category}</h4>
+          </div>
+          <span class="history-note">${categories[category].length} matches</span>
+        </div>
+      `;
+
+      const cardList = document.createElement("div");
+      cardList.className = "category-card-list";
+      categories[category].forEach((item) => {
+        cardList.appendChild(buildCatalogCard(item));
+      });
+
+      subsection.appendChild(cardList);
+      section.appendChild(subsection);
     });
 
-    const selectItem = () => {
-      state.selectedId = item.id;
-      renderApp();
-    };
-
-    card.addEventListener("click", selectItem);
-    card.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        selectItem();
-      }
-    });
-
-    fragment.appendChild(card);
+    catalogList.appendChild(section);
   });
-
-  catalogList.appendChild(fragment);
 }
 
 function buildBadge(text) {
@@ -1921,6 +2045,7 @@ function renderApp() {
   const selectedItem = ensureSelectedItem(filteredItems);
   plannerQuantityInput.value = String(state.plannerQuantity);
   updateSummary(filteredItems);
+  renderBrowseControls(filteredItems);
   renderCatalog(filteredItems);
   renderSelectedItem(selectedItem);
   renderZipMatches();
@@ -1933,6 +2058,21 @@ function renderApp() {
 function attachEvents() {
   searchInput.addEventListener("input", (event) => {
     state.searchTerm = event.target.value;
+    renderApp();
+  });
+
+  categorySearchInput.addEventListener("input", (event) => {
+    state.categorySearch = event.target.value;
+    renderApp();
+  });
+
+  productCategorySelect.addEventListener("change", (event) => {
+    state.selectedProductCategory = event.target.value;
+    renderApp();
+  });
+
+  serviceCategorySelect.addEventListener("change", (event) => {
+    state.selectedServiceCategory = event.target.value;
     renderApp();
   });
 
@@ -2019,6 +2159,10 @@ function attachEvents() {
     window.localStorage.removeItem(WATCH_STORAGE_KEY);
     window.localStorage.removeItem(ZIP_STORAGE_KEY);
     hydrateState();
+    state.categorySearch = "";
+    state.selectedProductCategory = "";
+    state.selectedServiceCategory = "";
+    searchInput.value = "";
     renderApp();
   });
 }
