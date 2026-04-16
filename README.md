@@ -4,9 +4,8 @@ SmartSave is a search-first comparison dashboard for products, services, cars, a
 
 ## Live Demo
 
-- Frontend demo: [SmartSave](https://christiancorona27.github.io/pricepilot-compare-app/)
-- Repo: [christianCorona27/pricepilot-compare-app](https://github.com/christianCorona27/pricepilot-compare-app)
-- Current note: the public app name is SmartSave, while the GitHub repo slug is still pricepilot-compare-app.
+- Frontend demo: [SmartSave](https://christiancorona27.github.io/smartSave/)
+- Repo: [christianCorona27/smartSave](https://github.com/christianCorona27/smartSave)
 
 ## What It Does
 
@@ -141,10 +140,18 @@ Without those values, the backend still stores subscriptions, but it cannot send
 
 ## Run Locally
 
-This project now has two practical ways to run:
+This project now has three practical ways to run:
 
-1. Open `index.html` directly in a browser for the static comparison experience.
-2. Use Netlify for the backend-enabled experience.
+1. Start the no-dependency local website server from this folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\start-website.ps1
+```
+
+Then open `http://localhost:5173/` in a browser.
+
+2. Open `index.html` directly in a browser for the static comparison experience.
+3. Use Netlify for the backend-enabled experience.
 
 Once Node.js is installed:
 
