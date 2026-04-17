@@ -1577,29 +1577,47 @@ function applyTargetDeltaNode(node, currentPrice, targetPrice) {
   node.classList.add(`is-${info.state}`);
 }
 
-function getPriceInsightMessage(currentPrice, targetPrice, confidence = "low") {
+function getPriceInsight(currentPrice, targetPrice, confidence = "low") {
   if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
-    return "Not enough context to rate this price yet.";
+    return {
+      state: "unknown",
+      message: "Not enough context to rate this price yet."
+    };
   }
 
   if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
-    return confidence === "low"
-      ? "Low confidence: confirm the detected number before saving."
-      : "Not enough context to rate this price yet. Add a target to compare against.";
+    return {
+      state: "unknown",
+      message: confidence === "low"
+        ? "Insight unavailable: confirm the detected number before saving."
+        : "Insight unavailable: add a target to compare this price against."
+    };
   }
 
   if (currentPrice <= targetPrice) {
-    return "Looks like a good deal for your target.";
+    return {
+      state: "good",
+      message: "Good deal: the detected price already meets your target."
+    };
   }
 
   const gapRatio = (currentPrice - targetPrice) / currentPrice;
-  if (gapRatio <= 0.1) {
-    return "Target almost reached. A small drop would trigger the alert.";
+  if (gapRatio <= 0.12) {
+    return {
+      state: "average",
+      message: "Average: close to your target, but not worth an alert yet."
+    };
   }
-  if (gapRatio >= 0.25) {
-    return "Looks high versus your target. Waiting is reasonable.";
+  if (gapRatio >= 0.22) {
+    return {
+      state: "high",
+      message: "High: this is still well above your target. Waiting is reasonable."
+    };
   }
-  return "Looks average versus your target. Track it and wait for a clearer drop.";
+  return {
+    state: "average",
+    message: "Average: track it and wait for a clearer drop."
+  };
 }
 
 function updateTrackerDeltaText() {
@@ -1611,7 +1629,10 @@ function updateTrackerDeltaText() {
   applyTargetDeltaNode(heroTargetDelta, previewPrice, heroTarget);
   applyTargetDeltaNode(customTargetDelta, customPrice, customTarget);
   if (heroValueInsight) {
-    heroValueInsight.textContent = getPriceInsightMessage(previewPrice, heroTarget, state.customPreview?.confidence);
+    const insight = getPriceInsight(previewPrice, heroTarget, state.customPreview?.confidence);
+    heroValueInsight.textContent = insight.message;
+    heroValueInsight.classList.remove("is-good", "is-average", "is-high", "is-unknown");
+    heroValueInsight.classList.add(`is-${insight.state}`);
   }
 }
 

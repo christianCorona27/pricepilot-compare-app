@@ -214,6 +214,7 @@ h4 {
 }
 
 .hero-text,
+.value-line,
 .panel-text,
 .detail-description,
 .history-note,
@@ -235,6 +236,18 @@ h4 {
   margin: 1.3rem 0 0;
   font-size: clamp(1rem, 1.5vw, 1.15rem);
   line-height: 1.75;
+}
+
+.value-line {
+  width: fit-content;
+  max-width: 42rem;
+  margin: 1rem 0 0;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 999px;
+  color: var(--primary-strong);
+  background: rgba(34, 197, 94, 0.1);
+  font-weight: 900;
 }
 
 .hero-actions {
@@ -395,6 +408,22 @@ h4 {
   line-height: 1.4;
 }
 
+.hero-value-insight.is-good {
+  color: var(--primary-strong);
+}
+
+.hero-value-insight.is-average {
+  color: var(--accent-strong);
+}
+
+.hero-value-insight.is-high {
+  color: #fecaca;
+}
+
+.hero-value-insight.is-unknown {
+  color: var(--muted-strong);
+}
+
 .hero-create-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -540,6 +569,7 @@ h4 {
 
 .demo-explorer {
   min-width: 0;
+  opacity: 0.84;
 }
 
 .demo-explorer > summary {
@@ -549,10 +579,10 @@ h4 {
   align-items: center;
   min-height: 3.2rem;
   padding: 0.95rem 1.05rem;
-  border: 1px dashed rgba(250, 204, 21, 0.34);
+  border: 1px dashed rgba(250, 204, 21, 0.26);
   border-radius: var(--radius-md);
-  color: var(--text-strong);
-  background: rgba(250, 204, 21, 0.07);
+  color: var(--muted-strong);
+  background: rgba(250, 204, 21, 0.035);
   cursor: pointer;
   font-weight: 900;
   list-style: none;
@@ -563,8 +593,8 @@ h4 {
 }
 
 .demo-explorer[open] > summary {
-  border-color: rgba(250, 204, 21, 0.52);
-  background: rgba(250, 204, 21, 0.1);
+  border-color: rgba(250, 204, 21, 0.36);
+  background: rgba(250, 204, 21, 0.065);
 }
 
 .demo-explorer > .demo-explainer,
@@ -1751,6 +1781,11 @@ textarea:focus-visible,
   h1 {
     max-width: 100%;
     font-size: clamp(2.75rem, 15vw, 4.6rem);
+  }
+
+  .value-line {
+    width: 100%;
+    border-radius: 18px;
   }
 
   .mobile-sticky-action {
