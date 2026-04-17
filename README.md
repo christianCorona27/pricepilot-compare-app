@@ -1,6 +1,6 @@
 # SmartSave
 
-SmartSave is a focused price-tracking web app built around one real workflow: a user pastes a public product URL, SmartSave reads the price metadata it can access, the user sets a target price and email, and a scheduled backend check sends an alert when the target is reached.
+SmartSave helps shoppers avoid overpaying by turning a public product page into a price tracker. A user pastes a URL, SmartSave reads the price metadata it can access, the user sets a target price and email, and a scheduled backend check sends an alert when the target is reached.
 
 The product is intentionally narrow. Demo datasets are included for browsing and presentation, but they are secondary and clearly labeled as demo-only.
 
@@ -21,6 +21,7 @@ This is the working product path. The app does not claim broad real-time retaile
 
 - Public URL parsing through `GET /api/link-preview`.
 - Price confidence labels for parsed pages: high, medium, or low.
+- Cautious price insight based on the detected price, confidence, and the user's target.
 - User-confirmed tracker creation through `POST /api/track-url`.
 - Target price and email capture.
 - Tracker storage with Netlify Blobs.
@@ -49,6 +50,8 @@ These examples are useful for judging the interface, but they are not connected 
 SmartSave reads public product-page metadata only. It does not bypass login screens, private pages, paywalls, anti-bot systems, shopping carts, account-only pricing, location-specific checkout flows, or JavaScript-only price rendering.
 
 If a page does not expose a readable price, SmartSave shows a low-confidence or failed result instead of inventing a price.
+
+Price insight is intentionally simple. It compares the readable page price to the user's target and confidence level; it does not claim full market intelligence.
 
 ## API Routes
 

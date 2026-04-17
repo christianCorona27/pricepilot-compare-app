@@ -1265,6 +1265,15 @@ function cleanManualText(value, fallback = "") {
   return cleaned || fallback;
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function slugify(value) {
   return cleanManualText(value, "custom-item")
     .toLowerCase()
@@ -1472,7 +1481,7 @@ async function applyZipMatch() {
     return;
   }
 
-  zipMatchStatus.textContent = `Matching local providers near ${normalizedZip}...`;
+  zipMatchStatus.textContent = `Matching local providers near ${normalizedZip}…`;
 
   try {
     const response = await fetch(`/api/local-match?zip=${encodeURIComponent(normalizedZip)}`);
@@ -1525,24 +1534,72 @@ function applyPreviewToCustomForm(preview, overwrite = false) {
 function setHeroPreviewStatus(message, isError = false) {
   heroPreviewStatus.textContent = message;
   heroPreviewStatus.classList.toggle("is-error", isError);
+  heroPreviewStatus.setAttribute("role", isError ? "alert" : "status");
 }
 
-function getTargetDeltaMessage(currentPrice, targetPrice) {
+function getTargetDeltaInfo(currentPrice, targetPrice) {
   if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
-    return "No readable price yet. Confirm the page result before creating a tracker.";
+    return {
+      message: "No readable price yet. Confirm the page result before creating a tracker.",
+      state: "neutral"
+    };
   }
   if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
-    return "Set a target below the detected price to get a drop alert.";
+    return {
+      message: "Set a target below the detected price to get a drop alert.",
+      state: "neutral"
+    };
   }
 
   const difference = currentPrice - targetPrice;
   if (difference > 0) {
-    return `Target is ${formatCurrency(difference)} below the detected price. SmartSave alerts when the page reaches it.`;
+    return {
+      message: `Target is ${formatCurrency(difference)} below the detected price. SmartSave alerts when the page reaches it.`,
+      state: difference <= currentPrice * 0.1 ? "near" : "above"
+    };
   }
   if (difference === 0) {
-    return "Target matches the detected price. Saving can trigger an immediate alert attempt.";
+    return {
+      message: "Target matches the detected price. Saving can trigger an immediate alert attempt.",
+      state: "met"
+    };
   }
-  return `Target is ${formatCurrency(Math.abs(difference))} above the detected price. This may alert immediately after saving.`;
+  return {
+    message: `Target is ${formatCurrency(Math.abs(difference))} above the detected price. This may alert immediately after saving.`,
+    state: "met"
+  };
+}
+
+function applyTargetDeltaNode(node, currentPrice, targetPrice) {
+  const info = getTargetDeltaInfo(currentPrice, targetPrice);
+  node.textContent = info.message;
+  node.classList.remove("is-neutral", "is-near", "is-above", "is-met");
+  node.classList.add(`is-${info.state}`);
+}
+
+function getPriceInsightMessage(currentPrice, targetPrice, confidence = "low") {
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
+    return "Not enough context to rate this price yet.";
+  }
+
+  if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
+    return confidence === "low"
+      ? "Low confidence: confirm the detected number before saving."
+      : "Not enough context to rate this price yet. Add a target to compare against.";
+  }
+
+  if (currentPrice <= targetPrice) {
+    return "Looks like a good deal for your target.";
+  }
+
+  const gapRatio = (currentPrice - targetPrice) / currentPrice;
+  if (gapRatio <= 0.1) {
+    return "Target almost reached. A small drop would trigger the alert.";
+  }
+  if (gapRatio >= 0.25) {
+    return "Looks high versus your target. Waiting is reasonable.";
+  }
+  return "Looks average versus your target. Track it and wait for a clearer drop.";
 }
 
 function updateTrackerDeltaText() {
@@ -1551,8 +1608,11 @@ function updateTrackerDeltaText() {
   const customPrice = parseMoneyInput(customCurrentPriceInput.value);
   const customTarget = parseMoneyInput(targetPriceInput.value);
 
-  heroTargetDelta.textContent = getTargetDeltaMessage(previewPrice, heroTarget);
-  customTargetDelta.textContent = getTargetDeltaMessage(customPrice, customTarget);
+  applyTargetDeltaNode(heroTargetDelta, previewPrice, heroTarget);
+  applyTargetDeltaNode(customTargetDelta, customPrice, customTarget);
+  if (heroValueInsight) {
+    heroValueInsight.textContent = getPriceInsightMessage(previewPrice, heroTarget, state.customPreview?.confidence);
+  }
 }
 
 function renderHeroPreview(preview) {
@@ -1561,9 +1621,6 @@ function renderHeroPreview(preview) {
   const confidence = getConfidenceMeta(preview.confidence);
   heroPreviewMeta.textContent = `${preview.hostname || "Unknown source"} - ${confidence.detail}`;
   heroPreviewPrice.textContent = preview.price ? formatCurrency(preview.price) : "Price not found";
-  heroValueInsight.textContent = preview.price
-    ? "Use this detected page price as the starting point for a target alert."
-    : "No reliable price was found. Confirm manually or try another public product page.";
   applyConfidenceBadge(heroConfidenceBadge, preview.confidence);
   setImageWithFallback(heroPreviewImage, heroPreviewFallback, preview.image, preview.title || preview.hostname || "SmartSave");
 
@@ -1585,8 +1642,9 @@ async function readHeroUrl() {
   }
 
   customUrlInput.value = url;
-  setHeroPreviewStatus("Reading public product page metadata...");
+  setHeroPreviewStatus("Reading public product page metadata…");
   heroFindPriceBtn.disabled = true;
+  heroFindPriceBtn.setAttribute("aria-busy", "true");
 
   try {
     const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
@@ -1603,6 +1661,7 @@ async function readHeroUrl() {
     return null;
   } finally {
     heroFindPriceBtn.disabled = false;
+    heroFindPriceBtn.removeAttribute("aria-busy");
   }
 }
 
@@ -1630,16 +1689,18 @@ async function createHeroTracker() {
   }
 
   heroCreateTrackerBtn.disabled = true;
-  setHeroPreviewStatus("Creating tracker...");
+  heroCreateTrackerBtn.setAttribute("aria-busy", "true");
+  setHeroPreviewStatus("Creating tracker…");
   const saved = await addCustomTracker();
   heroCreateTrackerBtn.disabled = false;
+  heroCreateTrackerBtn.removeAttribute("aria-busy");
 
   if (saved) {
     setHeroPreviewStatus("Tracker saved. Scheduled backend checks will refresh the price and email when the target is reached.");
-    heroValueInsight.textContent = "Saved tracker: price history updates after backend refreshes.";
     heroTargetPriceInput.value = "";
     heroEmailInput.value = "";
     updateTrackerDeltaText();
+    heroValueInsight.textContent = "Saved tracker: price history updates after backend refreshes.";
   }
 }
 
@@ -1655,7 +1716,7 @@ async function readCustomUrl() {
     return;
   }
 
-  customSourceStatus.textContent = "Reading public product page metadata...";
+  customSourceStatus.textContent = "Reading public product page metadata…";
   try {
     const response = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`);
     const payload = await readJsonSafe(response);
@@ -2493,7 +2554,7 @@ function renderBrowseControls(filteredItems) {
   categorySummary.innerHTML = "";
   const keys = Object.keys(counts).sort((a, b) => a.localeCompare(b));
   if (!keys.length) {
-    categorySummary.innerHTML = '<div class="empty-state">No sections match the current category filters yet.</div>';
+    categorySummary.innerHTML = '<div class="empty-state">No demo sections match these filters. Clear the search or choose a broader product/service type.</div>';
     return;
   }
 
@@ -2536,7 +2597,9 @@ function buildCatalogCard(item) {
   personalBadge.hidden = !best.isPersonalBest;
   card.querySelector(".catalog-pill").textContent = `Save ${formatCurrency(best.savings, best.billing)}`;
   card.querySelector(".catalog-reason").textContent = best.dealReason;
-  card.querySelector(".catalog-count").textContent = `${item.providerComparisons.length} providers`;
+  card.querySelector(".catalog-count").textContent = item.custom
+    ? `${item.providerComparisons.length} live source`
+    : `${item.providerComparisons.length} demo sources`;
 
   const metaNode = card.querySelector(".catalog-meta");
   metaNode.appendChild(buildDataBadge(item));
@@ -2572,7 +2635,7 @@ function renderCatalog(filteredItems) {
   if (!filteredItems.length) {
     const emptyState = document.createElement("div");
     emptyState.className = "empty-state";
-    emptyState.textContent = "No tracked items match this search and provider mix yet. Try another keyword or enable more sources.";
+    emptyState.textContent = "No saved trackers or demo items match this search. Try another keyword or clear the demo filters.";
     catalogList.appendChild(emptyState);
     return;
   }
@@ -2695,12 +2758,12 @@ function renderBeforeAfterPanel(card, provider) {
 
 function renderSelectedItem(item) {
   if (!item) {
-    selectedTitle.textContent = "Select a tracked item";
-    selectedDescription.textContent = "Search above to inspect current comparison results, coupon stacking, deal requirements, and price history.";
+    selectedTitle.textContent = "Select a live tracker or demo item";
+    selectedDescription.textContent = "Saved URL trackers show real page metadata. Demo items show seeded comparison behavior only.";
     selectedBadges.innerHTML = "";
-    providerGrid.innerHTML = '<div class="empty-state">Provider detail will appear here once a tracked item is selected.</div>';
-    plannerGrid.innerHTML = '<div class="empty-state">Planner tips will appear here once a tracked item is selected.</div>';
-    historyNote.textContent = "Price history will appear once a tracked item is selected.";
+    providerGrid.innerHTML = '<div class="empty-state">Source details appear here after you select a live tracker or demo item.</div>';
+    plannerGrid.innerHTML = '<div class="empty-state">Demo planning tips appear here only for seeded examples that include them.</div>';
+    historyNote.textContent = "Live trackers start with one saved price point. Scheduled checks add more over time.";
     historyLegend.innerHTML = "";
     historyPoints.innerHTML = "";
     historyChart.innerHTML = "";
@@ -2726,7 +2789,9 @@ function renderSelectedItem(item) {
   const badgeLabels = [
     item.category,
     item.matchMode,
-    `${item.providerComparisons.length} providers active`
+    item.custom
+      ? `${item.providerComparisons.length} live source`
+      : `${item.providerComparisons.length} demo sources`
   ];
   if (item.bulkTiers?.length) {
     badgeLabels.push("Bulk pricing");
@@ -2761,7 +2826,7 @@ function renderProviders(providers) {
   providerGrid.innerHTML = "";
 
   if (!providers.length) {
-    providerGrid.innerHTML = '<div class="empty-state">No providers available for this tracked item with the current source filters.</div>';
+    providerGrid.innerHTML = '<div class="empty-state">No visible sources are available for this item with the current filters.</div>';
     return;
   }
 
@@ -3047,7 +3112,7 @@ function renderZipMatches() {
 
   const matches = Object.values(state.zipMatches);
   if (!matches.length) {
-    zipMatchList.innerHTML = '<div class="empty-state">Matched dealerships and lenders will show up here once a ZIP is applied.</div>';
+    zipMatchList.innerHTML = '<div class="empty-state">Enter a ZIP to see seeded dealership and lender examples. This is demo-only matching.</div>';
     return;
   }
 
@@ -3071,11 +3136,81 @@ function renderZipMatches() {
   zipMatchList.appendChild(fragment);
 }
 
+function getWatchPriceSummary(best, watch) {
+  const currentPrice = Number(best?.finalPrice);
+  const targetPrice = Number(watch?.targetPrice);
+  const billing = best?.billing || "one-time";
+
+  if (!Number.isFinite(currentPrice)) {
+    return {
+      current: "Unavailable",
+      target: Number.isFinite(targetPrice) ? formatCurrency(targetPrice, billing) : "No target",
+      delta: "Price unavailable",
+      state: "neutral"
+    };
+  }
+
+  if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
+    return {
+      current: formatCurrency(currentPrice, billing),
+      target: "No target",
+      delta: "Add a target",
+      state: "neutral"
+    };
+  }
+
+  const difference = currentPrice - targetPrice;
+  if (difference > 0) {
+    return {
+      current: formatCurrency(currentPrice, billing),
+      target: formatCurrency(targetPrice, billing),
+      delta: `${formatCurrency(difference, billing)} above target`,
+      state: difference <= currentPrice * 0.1 ? "near" : "above"
+    };
+  }
+
+  if (difference === 0) {
+    return {
+      current: formatCurrency(currentPrice, billing),
+      target: formatCurrency(targetPrice, billing),
+      delta: "At target",
+      state: "met"
+    };
+  }
+
+  return {
+    current: formatCurrency(currentPrice, billing),
+    target: formatCurrency(targetPrice, billing),
+    delta: `${formatCurrency(Math.abs(difference), billing)} below target`,
+    state: "met"
+  };
+}
+
+function getWatchSyncSummary(item, watch) {
+  if (isItemRefreshFailed(item)) {
+    const failedRequirement = item.providers
+      ?.flatMap((provider) => provider.dealRequirements || [])
+      .find((requirement) => /^Last refresh failed:/i.test(requirement));
+    const reason = failedRequirement
+      ? failedRequirement.replace(/^Last refresh failed:\s*/i, "")
+      : "The source may be blocked, timed out, or missing readable price metadata.";
+    return `Refresh issue: ${reason}`;
+  }
+
+  if (watch.backendSyncedAt) {
+    return `Backend synced ${formatDate(watch.backendSyncedAt)}. Scheduled checks continue in Netlify.`;
+  }
+
+  return item.custom
+    ? "Saved locally. Backend email alerts activate after a successful sync."
+    : "Local demo watch only. Demo data is not refreshed by the backend.";
+}
+
 function renderWatchlist() {
   watchlistItems.innerHTML = "";
   const entries = Object.entries(state.watches);
   if (!entries.length) {
-    watchlistItems.innerHTML = '<div class="empty-state">Saved URL trackers and local demo watches will show up here.</div>';
+    watchlistItems.innerHTML = '<div class="empty-state">No saved trackers yet. Paste a public product URL above, check the readable price, then save a target alert.</div>';
     return;
   }
 
@@ -3088,19 +3223,33 @@ function renderWatchlist() {
     const best = getVisibleProviderComparisons(item)[0];
     const dataMode = getItemDataMode(item);
     const refreshFailed = isItemRefreshFailed(item);
+    const priceSummary = getWatchPriceSummary(best, watch);
+    const syncSummary = getWatchSyncSummary(item, watch);
+    const sourceSummary = best?.sourceUrl ? `Source: ${getHostname(best.sourceUrl)}` : item.custom ? "Live source pending" : "Demo catalog item";
     const card = document.createElement("article");
     card.className = "watchlist-card";
     card.innerHTML = `
       <div class="watchlist-card-header">
         <div>
-          <h4>${item.name}</h4>
-          <p class="history-note">Best now: ${best ? formatCurrency(best.finalPrice, best.billing) : "Unavailable"}</p>
+          <h4>${escapeHtml(item.name)}</h4>
+          <p class="history-note">${escapeHtml(sourceSummary)}</p>
         </div>
-        <span class="savings-pill ${best && watch.targetPrice >= best.finalPrice ? "" : "is-muted"}">${watch.targetPrice ? `Target ${formatCurrency(watch.targetPrice, best?.billing || "one-time")}` : "No target"}</span>
+        <span class="savings-pill target-state-${priceSummary.state} ${priceSummary.state === "met" ? "" : "is-muted"}">${escapeHtml(priceSummary.delta)}</span>
       </div>
+      <div class="watch-price-grid" aria-label="Tracker price status">
+        <div>
+          <span class="provider-label">Current</span>
+          <strong>${escapeHtml(priceSummary.current)}</strong>
+        </div>
+        <div>
+          <span class="provider-label">Target</span>
+          <strong>${escapeHtml(priceSummary.target)}</strong>
+        </div>
+      </div>
+      <p class="watch-sync-summary ${refreshFailed ? "is-failed" : ""}">${escapeHtml(syncSummary)}</p>
       <div class="watchlist-meta">
-        <span class="meta-pill">${watch.email || "No email"}</span>
-        <span class="meta-pill data-badge ${dataMode.className}">${dataMode.label}</span>
+        <span class="meta-pill">${escapeHtml(watch.email || "No email")}</span>
+        <span class="meta-pill data-badge ${dataMode.className}">${escapeHtml(dataMode.label)}</span>
         ${refreshFailed ? `<span class="meta-pill data-badge status-failed">Refresh Failed</span>` : ""}
         ${watch.backendSyncedAt ? `<span class="meta-pill">Backend synced</span>` : ""}
       </div>

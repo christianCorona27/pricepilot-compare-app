@@ -8,6 +8,7 @@
       name="description"
       content="SmartSave reads a public product page, stores a target price, and sends an email alert when scheduled backend checks find the target price."
     />
+    <meta name="theme-color" content="#07111f" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,19 +18,23 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <a class="skip-link" href="#urlTrackerPanel">Skip to Price Tracker</a>
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
           <p class="eyebrow">Live URL price tracking</p>
-          <h1>Avoid overpaying. Track the page price.</h1>
+          <h1>Most people overpay. SmartSave tracks the price a page actually shows.</h1>
           <p class="hero-text">
             Paste a public product page, confirm the price SmartSave can read, set your target, and let the backend
             check for the drop.
           </p>
+          <p class="why-note">
+            Why it matters: sale labels, account terms, and checkout timing can hide the price you should wait for.
+          </p>
           <section class="hero-url-card" aria-label="Paste a product URL to start tracking">
             <label class="hero-url-label" for="heroUrlInput">Product URL</label>
             <div class="hero-url-row">
-              <input id="heroUrlInput" type="url" placeholder="https://store.example.com/product" />
+              <input id="heroUrlInput" name="product-url" type="url" autocomplete="url" placeholder="https://store.example.com/product" />
               <button class="solid-button hero-url-button" id="heroFindPriceBtn" type="button">
                 Check This Price
               </button>
@@ -39,7 +44,7 @@
             </p>
             <div class="hero-preview-panel" id="heroPreviewPanel" hidden>
               <div class="hero-preview-media">
-                <img id="heroPreviewImage" alt="" loading="lazy" />
+                <img id="heroPreviewImage" alt="" width="112" height="112" loading="lazy" />
                 <span id="heroPreviewFallback">SS</span>
               </div>
               <div class="hero-preview-content">
@@ -60,16 +65,16 @@
                 <div class="hero-create-grid">
                   <label>
                     Target price
-                    <input id="heroTargetPriceInput" type="number" min="0" step="0.01" placeholder="149.99" />
+                    <input id="heroTargetPriceInput" name="target-price" type="number" inputmode="decimal" min="0" step="0.01" autocomplete="off" placeholder="149.99" />
                   </label>
                   <label>
                     Email for alert
-                    <input id="heroEmailInput" type="email" placeholder="you@example.com" />
+                    <input id="heroEmailInput" name="alert-email" type="email" autocomplete="email" spellcheck="false" placeholder="you@example.com" />
                   </label>
                 </div>
                 <p class="tracker-gap-note" id="heroTargetDelta">Set a target below the detected price to get a drop alert.</p>
                 <button class="solid-button hero-create-button" id="heroCreateTrackerBtn" type="button">
-                  Save Tracker
+                  Save Tracker and Email Me
                 </button>
               </div>
             </div>
@@ -93,6 +98,14 @@
           <p class="meter-footnote" id="dataModeNote">
             Live trackers use public page metadata. Demo catalog data is separate and labeled as demo-only.
           </p>
+          <div class="data-legend hero-data-legend" aria-label="SmartSave data status legend">
+            <span class="data-badge status-live">Live Tracker</span>
+            <span class="data-badge status-demo">Demo Data</span>
+            <span class="data-badge status-failed">Refresh Failed</span>
+          </div>
+          <p class="meter-footnote">
+            Green means a saved URL tracker, yellow means seeded demo content, and red means the page could not be refreshed.
+          </p>
         </div>
       </header>
 
@@ -110,30 +123,30 @@
             <div class="alert-form">
               <label>
                 Product URL
-                <input id="customUrlInput" type="url" placeholder="https://store.example.com/product" />
+                <input id="customUrlInput" name="manual-product-url" type="url" autocomplete="url" placeholder="https://store.example.com/product" />
               </label>
-              <button class="ghost-button small-button" id="readUrlBtn" type="button">Read price from page</button>
+              <button class="ghost-button small-button" id="readUrlBtn" type="button">Read page price</button>
               <label>
                 Extracted title
-                <input id="customNameInput" type="text" placeholder="Loaded from page metadata" />
+                <input id="customNameInput" name="product-title" type="text" autocomplete="off" placeholder="Loaded from page metadata" />
               </label>
               <div class="custom-form-grid">
                 <label>
                   Current price
-                  <input id="customCurrentPriceInput" type="number" min="0" step="0.01" placeholder="199.99" />
+                  <input id="customCurrentPriceInput" name="current-price" type="number" inputmode="decimal" min="0" step="0.01" autocomplete="off" placeholder="199.99" />
                 </label>
                 <label>
                   Target price
-                  <input id="targetPriceInput" type="number" min="0" step="0.01" placeholder="149.99" />
+                  <input id="targetPriceInput" name="manual-target-price" type="number" inputmode="decimal" min="0" step="0.01" autocomplete="off" placeholder="149.99" />
                 </label>
               </div>
               <label>
                 Email for alert
-                <input id="emailAlertInput" type="email" placeholder="you@example.com" />
+                <input id="emailAlertInput" name="manual-alert-email" type="email" autocomplete="email" spellcheck="false" placeholder="you@example.com" />
               </label>
               <label>
                 Category label
-                <input id="customCategoryInput" type="text" placeholder="Electronics, appliances, household" />
+                <input id="customCategoryInput" name="category-label" type="text" autocomplete="off" placeholder="Electronics, appliances, household" />
               </label>
               <div class="hidden-maintenance-fields" aria-hidden="true">
                 <input id="textAlertInput" type="hidden" />
@@ -144,7 +157,7 @@
                 <input id="customDiscountLabelInput" type="hidden" />
                 <textarea id="customRequirementsInput"></textarea>
               </div>
-              <button class="solid-button small-button" id="addCustomItemBtn" type="button">Save live tracker</button>
+              <button class="solid-button small-button" id="addCustomItemBtn" type="button">Save live tracker and email me</button>
               <p class="tracker-gap-note" id="customTargetDelta">After saving, the backend stores this tracker and checks it on schedule.</p>
               <p class="history-note" id="customSourceStatus">Paste a URL, extract metadata, then set a target price and email.</p>
             </div>
@@ -153,7 +166,7 @@
           <section class="panel watchlist-panel">
             <div class="panel-heading">
               <p class="section-kicker">Saved</p>
-              <h2>Trackers and watches</h2>
+              <h2>Live trackers and demo watches</h2>
             </div>
             <p class="panel-text">
               Live URL trackers sync to the backend. Demo catalog watches stay local in this browser.
@@ -272,7 +285,7 @@
             <div class="alert-form">
               <label>
                 ZIP code
-                <input id="zipCodeInput" type="text" inputmode="numeric" maxlength="5" placeholder="78704" />
+                <input id="zipCodeInput" name="postal-code" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="78704" />
               </label>
               <div class="alert-actions">
                 <button class="ghost-button small-button" id="applyZipBtn" type="button">Run demo match</button>
@@ -298,7 +311,9 @@
               <span>Search demo catalog and saved URL trackers</span>
               <input
                 id="searchInput"
+                name="demo-search"
                 type="search"
+                autocomplete="off"
                 placeholder="Search headphones, appliance, internet, vehicle, or pasted tracker"
               />
             </label>
@@ -333,7 +348,9 @@
                 <span>Search section names</span>
                 <input
                   id="categorySearchInput"
+                  name="section-search"
                   type="search"
+                  autocomplete="off"
                   placeholder="Electronics, grocery, vehicle, home APR, streaming"
                 />
               </label>
@@ -362,7 +379,7 @@
             <div class="detail-header">
               <div class="detail-feature">
                 <div class="detail-media">
-                  <img id="selectedImage" alt="" loading="lazy" />
+                  <img id="selectedImage" alt="" width="320" height="220" loading="lazy" />
                   <span id="selectedImageFallback">SS</span>
                 </div>
                 <div>
@@ -393,8 +410,8 @@
 
             <section class="providers-shell">
               <div class="providers-head">
-                <p class="section-kicker">Demo Comparison</p>
-                <h3>Modeled sources</h3>
+                <p class="section-kicker">Source Details</p>
+                <h3>Visible sources</h3>
               </div>
               <div id="providerGrid" class="provider-grid"></div>
             </section>
@@ -423,7 +440,7 @@
     <template id="catalogCardTemplate">
       <article class="catalog-card" tabindex="0">
         <div class="catalog-media">
-          <img class="catalog-image" alt="" loading="lazy" />
+          <img class="catalog-image" alt="" width="180" height="180" loading="lazy" />
           <span class="catalog-fallback"></span>
         </div>
         <div class="catalog-main">

@@ -35,6 +35,7 @@
 
 html {
   scroll-behavior: smooth;
+  color-scheme: dark;
   overflow-x: hidden;
 }
 
@@ -48,6 +49,7 @@ body {
     radial-gradient(circle at 88% 10%, rgba(34, 197, 94, 0.15), transparent 26rem),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
   overflow-x: hidden;
+  -webkit-tap-highlight-color: rgba(134, 239, 172, 0.22);
 }
 
 [hidden] {
@@ -77,6 +79,39 @@ textarea {
 button {
   border: 0;
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+a {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(134, 239, 172, 0.86);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 50;
+  transform: translateY(-150%);
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  color: #04120a;
+  background: var(--primary-strong);
+  font-weight: 900;
+  text-decoration: none;
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
 }
 
 .page-shell {
@@ -161,12 +196,13 @@ button {
 
 h1 {
   margin: 0;
-  max-width: 11ch;
+  max-width: 12.8ch;
   font-family: "Instrument Serif", Georgia, serif;
   font-size: clamp(3.1rem, 8vw, 6.5rem);
   line-height: 0.95;
   letter-spacing: -0.055em;
   color: var(--text-strong);
+  text-wrap: balance;
 }
 
 h2,
@@ -174,6 +210,7 @@ h3,
 h4 {
   color: var(--text-strong);
   letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
 .hero-text,
@@ -221,11 +258,20 @@ h4 {
 }
 
 .architecture-note,
+.why-note,
 .demo-explainer,
 .tracker-gap-note {
   margin: 0;
   color: var(--muted-strong);
   line-height: 1.55;
+}
+
+.why-note {
+  max-width: 44rem;
+  margin-top: 0.9rem;
+  padding-left: 0.9rem;
+  border-left: 3px solid var(--primary);
+  color: var(--text);
 }
 
 .architecture-note {
@@ -358,6 +404,29 @@ h4 {
 
 .hero-create-button {
   justify-self: start;
+}
+
+.tracker-gap-note {
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(4, 10, 20, 0.34);
+}
+
+.tracker-gap-note.is-met {
+  color: var(--primary-strong);
+  border-color: rgba(34, 197, 94, 0.34);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.tracker-gap-note.is-near {
+  color: var(--warning);
+  border-color: rgba(250, 204, 21, 0.34);
+  background: rgba(250, 204, 21, 0.1);
+}
+
+.tracker-gap-note.is-above {
+  color: var(--muted-strong);
 }
 
 .solid-button,
@@ -787,7 +856,6 @@ textarea {
   padding: 0.88rem 0.95rem;
   color: var(--text);
   background: #071625;
-  outline: none;
 }
 
 select {
@@ -799,13 +867,12 @@ textarea::placeholder {
   color: rgba(237, 246, 255, 0.38);
 }
 
-input:focus,
-select:focus,
-textarea:focus,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
 .catalog-card:focus-visible {
   border-color: rgba(59, 130, 246, 0.72);
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.16);
-  outline: none;
 }
 
 .catalog-shell {
@@ -1287,6 +1354,50 @@ textarea:focus,
   background: rgba(7, 17, 31, 0.5);
 }
 
+.watch-price-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: rgba(7, 17, 31, 0.46);
+}
+
+.watch-price-grid strong {
+  display: block;
+  margin-top: 0.24rem;
+  color: var(--text-strong);
+}
+
+.watch-sync-summary {
+  margin: 0;
+  color: var(--muted-strong);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.watch-sync-summary.is-failed {
+  color: #fecaca;
+}
+
+.target-state-met {
+  color: #04120a;
+  background: linear-gradient(135deg, var(--primary-strong), var(--primary));
+}
+
+.target-state-near {
+  color: #2b2100;
+  background: linear-gradient(135deg, #fef08a, var(--warning));
+}
+
+.target-state-above,
+.target-state-neutral {
+  color: var(--muted-strong);
+  border-color: var(--line);
+  background: rgba(7, 17, 31, 0.56);
+}
+
 .before-after-panel {
   display: grid;
   gap: 0.75rem;
@@ -1478,6 +1589,7 @@ textarea:focus,
   .hero-preview-panel,
   .preview-result-grid,
   .hero-create-grid,
+  .watch-price-grid,
   .list-head,
   .catalog-card,
   .provider-pricing-grid,
