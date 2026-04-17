@@ -967,13 +967,13 @@ textarea:focus-visible,
 .list-head,
 .catalog-card {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1.8fr) minmax(230px, 0.9fr) auto;
+  grid-template-columns: 92px minmax(14rem, 1.45fr) minmax(11rem, 0.8fr) minmax(9.5rem, 0.65fr);
   gap: 1rem;
-  align-items: center;
+  align-items: start;
 }
 
 .list-head {
-  grid-template-columns: minmax(0, 1.8fr) minmax(230px, 0.9fr) auto;
+  grid-template-columns: minmax(14rem, 1.45fr) minmax(11rem, 0.8fr) minmax(9.5rem, 0.65fr);
   padding: 0 0.55rem 0.8rem;
   color: var(--muted);
   font-size: 0.78rem;
@@ -988,11 +988,12 @@ textarea:focus-visible,
 }
 
 .catalog-card {
-  padding: 1rem 0.55rem;
+  padding: 1.1rem 0.75rem;
   cursor: pointer;
   background: transparent;
   border-width: 1px 0 0;
   border-radius: 0;
+  overflow: hidden;
 }
 
 .catalog-card.is-active {
@@ -1014,8 +1015,8 @@ textarea:focus-visible,
 }
 
 .catalog-media {
-  width: 84px;
-  height: 84px;
+  width: 92px;
+  height: 92px;
 }
 
 .detail-media {
@@ -1091,13 +1092,18 @@ textarea:focus-visible,
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .catalog-title,
 .provider-name {
   margin: 0;
   font-size: 1.06rem;
+  line-height: 1.22;
+}
+
+.catalog-title {
+  max-width: 22rem;
 }
 
 .offer-type,
@@ -1155,6 +1161,15 @@ textarea:focus-visible,
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.catalog-meta {
+  margin-top: 0.6rem;
+}
+
+.catalog-meta .data-badge,
+.catalog-type {
+  flex: 0 0 auto;
 }
 
 .meta-pill,
@@ -1253,6 +1268,8 @@ textarea:focus-visible,
   display: grid;
   justify-items: end;
   gap: 0.4rem;
+  align-self: start;
+  text-wrap: balance;
 }
 
 .catalog-best,
@@ -1276,8 +1293,16 @@ textarea:focus-visible,
   font-weight: 900;
 }
 
+.catalog-regular,
+.catalog-note,
+.catalog-average,
+.catalog-reason,
+.catalog-count {
+  overflow-wrap: anywhere;
+}
+
 .catalog-average {
-  max-width: 16rem;
+  max-width: 14rem;
   color: var(--primary-strong);
   font-weight: 900;
 }
@@ -1287,7 +1312,8 @@ textarea:focus-visible,
 }
 
 .catalog-reason {
-  max-width: 18rem;
+  max-width: 11rem;
+  overflow-wrap: anywhere;
 }
 
 .savings-pill {
@@ -1652,6 +1678,31 @@ textarea:focus-visible,
   .browse-grid,
   .planner-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1320px) and (min-width: 861px) {
+  .list-head,
+  .catalog-card {
+    grid-template-columns: 88px minmax(13rem, 1.2fr) minmax(10rem, 0.75fr);
+  }
+
+  .list-head {
+    grid-template-columns: minmax(13rem, 1.2fr) minmax(10rem, 0.75fr);
+  }
+
+  .list-head span:nth-child(3) {
+    display: none;
+  }
+
+  .catalog-side {
+    grid-column: 2 / -1;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .catalog-reason {
+    max-width: 100%;
   }
 }
 
