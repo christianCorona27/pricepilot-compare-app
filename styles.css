@@ -196,11 +196,12 @@ textarea:focus-visible {
 
 h1 {
   margin: 0;
-  max-width: 12.8ch;
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: clamp(3.1rem, 8vw, 6.5rem);
-  line-height: 0.95;
-  letter-spacing: -0.055em;
+  max-width: 14ch;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  font-size: clamp(3rem, 6.2vw, 5.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.07em;
+  font-weight: 700;
   color: var(--text-strong);
   text-wrap: balance;
 }
@@ -675,6 +676,11 @@ h4 {
   margin-top: 1rem;
 }
 
+.workspace > .demo-section-label,
+.workspace > .results-area {
+  grid-column: 1 / -1;
+}
+
 .sidebar {
   align-self: start;
 }
@@ -967,13 +973,13 @@ textarea:focus-visible,
 .list-head,
 .catalog-card {
   display: grid;
-  grid-template-columns: 92px minmax(14rem, 1.45fr) minmax(11rem, 0.8fr) minmax(9.5rem, 0.65fr);
-  gap: 1rem;
-  align-items: start;
+  grid-template-columns: 84px minmax(0, 1.55fr) minmax(170px, 0.72fr) minmax(150px, 0.58fr);
+  gap: 0.9rem;
+  align-items: center;
 }
 
 .list-head {
-  grid-template-columns: minmax(14rem, 1.45fr) minmax(11rem, 0.8fr) minmax(9.5rem, 0.65fr);
+  grid-template-columns: minmax(0, 1.55fr) minmax(170px, 0.72fr) minmax(150px, 0.58fr);
   padding: 0 0.55rem 0.8rem;
   color: var(--muted);
   font-size: 0.78rem;
@@ -988,12 +994,11 @@ textarea:focus-visible,
 }
 
 .catalog-card {
-  padding: 1.1rem 0.75rem;
+  padding: 1rem 0.55rem;
   cursor: pointer;
   background: transparent;
   border-width: 1px 0 0;
   border-radius: 0;
-  overflow: hidden;
 }
 
 .catalog-card.is-active {
@@ -1015,8 +1020,8 @@ textarea:focus-visible,
 }
 
 .catalog-media {
-  width: 92px;
-  height: 92px;
+  width: 84px;
+  height: 84px;
 }
 
 .detail-media {
@@ -1103,7 +1108,7 @@ textarea:focus-visible,
 }
 
 .catalog-title {
-  max-width: 22rem;
+  overflow-wrap: anywhere;
 }
 
 .offer-type,
@@ -1268,7 +1273,7 @@ textarea:focus-visible,
   display: grid;
   justify-items: end;
   gap: 0.4rem;
-  align-self: start;
+  align-self: center;
   text-wrap: balance;
 }
 
@@ -1302,7 +1307,7 @@ textarea:focus-visible,
 }
 
 .catalog-average {
-  max-width: 14rem;
+  max-width: 16rem;
   color: var(--primary-strong);
   font-weight: 900;
 }
@@ -1312,7 +1317,7 @@ textarea:focus-visible,
 }
 
 .catalog-reason {
-  max-width: 11rem;
+  max-width: 14rem;
   overflow-wrap: anywhere;
 }
 
@@ -1681,31 +1686,6 @@ textarea:focus-visible,
   }
 }
 
-@media (max-width: 1320px) and (min-width: 861px) {
-  .list-head,
-  .catalog-card {
-    grid-template-columns: 88px minmax(13rem, 1.2fr) minmax(10rem, 0.75fr);
-  }
-
-  .list-head {
-    grid-template-columns: minmax(13rem, 1.2fr) minmax(10rem, 0.75fr);
-  }
-
-  .list-head span:nth-child(3) {
-    display: none;
-  }
-
-  .catalog-side {
-    grid-column: 2 / -1;
-    justify-items: start;
-    text-align: left;
-  }
-
-  .catalog-reason {
-    max-width: 100%;
-  }
-}
-
 @media (max-width: 860px) {
   html {
     scroll-padding-top: 0.75rem;
@@ -1886,7 +1866,9 @@ textarea:focus-visible,
 
   h1 {
     max-width: 100%;
-    font-size: clamp(2.75rem, 15vw, 4.6rem);
+    font-size: clamp(2.45rem, 10vw, 3.55rem);
+    line-height: 1.04;
+    letter-spacing: -0.055em;
   }
 
   .value-line {
@@ -1902,7 +1884,11 @@ textarea:focus-visible,
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: min(18rem, calc(100vw - 2rem));
+    width: auto;
+    min-width: min(9.5rem, calc(100vw - 2rem));
+    min-height: 3rem;
+    padding: 0.8rem 1rem;
+    font-size: 0.92rem;
     border-radius: 999px;
     color: #04120a;
     background: linear-gradient(135deg, var(--primary-strong), var(--primary));
